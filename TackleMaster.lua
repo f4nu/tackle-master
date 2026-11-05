@@ -3,7 +3,9 @@
 -- Awake, the add-on's own key (an override binding, not a game key binding,
 -- so the key's usual action comes back when asleep) does the next step:
 -- equip the best pole in the bags, put the best lure on it, cast, reel in.
--- Going to sleep takes the weapons the pole replaced back out of the bags.
+-- Clams and chests fished up are opened between casts, and fishing loot
+-- is taken. Going to sleep takes the weapons the pole replaced back out of
+-- the bags.
 --
 -- Nothing here touches Blizzard frames or functions: the game's own UI must
 -- never run code tainted by this add-on.
@@ -21,6 +23,8 @@ local SOFT_CVARS = {
 	SoftTargetInteractRangeIsHard = "0",
 	SoftTargetInteractArc = "2",
 }
+
+local DEFAULTS = { autoLure = true, autoPole = true, autoLoot = true, openClams = true, openChests = true }
 
 local db, char
 
@@ -79,6 +83,38 @@ local function fishing()
 	return spell and ns.FISHING[spell] or false
 end
 
+-- Sea containers ----------------------------------------------------------
+
+-- Items that wouldn't open (locked, bags full) are left alone this session.
+local skip, opening, lootOpened = {}, nil, 0
+
+-- Known containers, plus any fished item that turns out to open.
+local function seaKind(id)
+	local known = ns.SEA[id]
+	if known then return not known[2] and known[1] end
+	return db.fished[id] and "chest"
+end
+
+local function containerInBags()
+	for bag = 0, NUM_BAG_SLOTS do
+		for slot = 1, C_Container.GetContainerNumSlots(bag) do
+			local info = C_Container.GetContainerItemInfo(bag, slot)
+			local kind = info and info.hasLoot and not skip[info.itemID] and seaKind(info.itemID)
+			if kind == "clam" and db.openClams or kind == "chest" and db.openChests then
+				return info.itemID
+			end
+		end
+	end
+end
+
+-- An open that left the item in the bags didn't work: stop trying it.
+local function checkOpening()
+	if opening and GetTime() - opening.time > 2 then
+		if C_Item.GetItemCount(opening.id) >= opening.count then skip[opening.id] = true end
+		opening = nil
+	end
+end
+
 -- The next step, and the item it uses.
 local function decide()
 	if not char.awake or UnitIsDeadOrGhost("player") or IsMounted() or UnitOnTaxi("player") then
@@ -93,6 +129,10 @@ local function decide()
 	if db.autoLure and pole and not lured() then
 		local best = bestInBags(ns.LURES)
 		if best then return "lure", best end
+	end
+	if not opening and GetNumLootItems() == 0 then
+		local box = containerInBags()
+		if box then return "open", box end
 	end
 	return "cast"
 end
@@ -124,7 +164,13 @@ end
 -- Remembers what the pole is about to replace. Runs before the secure
 -- click, once per swap: a pole replacing a pole keeps the first weapons.
 button:SetScript("PreClick", function()
-	if button:GetAttribute("step") ~= "pole" or char.weapons or equippedPole() then return end
+	local step = button:GetAttribute("step")
+	if step == "open" and not opening then
+		local id = button:GetAttribute("item")
+		opening = { id = id, count = C_Item.GetItemCount(id), time = GetTime() }
+		lootOpened = GetTime() + 3
+	end
+	if step ~= "pole" or char.weapons or equippedPole() then return end
 	char.weapons = {
 		main = GetInventoryItemLink("player", POLE_SLOT),
 		off = GetInventoryItemLink("player", OFF_SLOT),
@@ -182,6 +228,7 @@ local refresh
 -- action. The ticker tries again once it is up.
 local function update()
 	if InCombatLockdown() then return end
+	checkOpening()
 	local step, item = decide()
 	holdSoftInteract(step == "reel")
 	if not db.key then
@@ -201,6 +248,11 @@ local function update()
 			button:SetAttribute("step", step)
 			button:SetAttribute("macrotext", "/use item:" .. item .. "\n/use " .. POLE_SLOT)
 			SetOverrideBindingClick(owner, true, db.key, button:GetName())
+		elseif step == "open" then
+			button:SetAttribute("step", step)
+			button:SetAttribute("item", item)
+			button:SetAttribute("macrotext", "/use item:" .. item)
+			SetOverrideBindingClick(owner, true, db.key, button:GetName())
 		end
 	end
 	refresh()
@@ -213,6 +265,24 @@ owner:SetScript("OnUpdate", function(_, dt)
 	elapsed = 0
 	if char and char.awake then update() end
 end)
+
+-- Loot --------------------------------------------------------------------
+
+-- Takes fishing loot, and the loot of a container just opened; learns what
+-- was fished, so fished containers outside the known list open too.
+local function loot()
+	if not char.awake then return end
+	local fished = IsFishingLoot()
+	if not fished and GetTime() > lootOpened then return end
+	for i = GetNumLootItems(), 1, -1 do
+		if fished and not InCombatLockdown() then
+			local link = GetLootSlotLink(i)
+			local id = link and C_Item.GetItemInfoInstant(link)
+			if id then db.fished[id] = true end
+		end
+		if db.autoLoot then LootSlot(i) end
+	end
+end
 
 -- Sleep and wake ----------------------------------------------------------
 
@@ -235,7 +305,7 @@ end
 -- UI ----------------------------------------------------------------------
 
 local ui = CreateFrame("Frame", "TackleMasterFrame", UIParent, "BackdropTemplate")
-ui:SetSize(150, 48)
+ui:SetSize(196, 70)
 ui:SetBackdrop({
 	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
 	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -265,8 +335,8 @@ local function tooltip(frame, build)
 end
 
 local toggle = CreateFrame("Button", nil, ui)
-toggle:SetSize(36, 36)
-toggle:SetPoint("LEFT", 6, 0)
+toggle:SetSize(40, 40)
+toggle:SetPoint("LEFT", 7, 0)
 toggle:RegisterForDrag("LeftButton")
 toggle:SetScript("OnDragStart", function() ui:StartMoving() end)
 toggle:SetScript("OnDragStop", function() ui:GetScript("OnDragStop")(ui) end)
@@ -294,7 +364,7 @@ end)
 -- The key: click, then press a key or mouse button. Escape cancels,
 -- right-click unbinds.
 local keyButton = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-keyButton:SetSize(96, 20)
+keyButton:SetSize(142, 20)
 keyButton:SetPoint("TOPLEFT", toggle, "TOPRIGHT", 6, 0)
 keyButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
@@ -346,14 +416,15 @@ tooltip(keyButton, function()
 	GameTooltip:AddLine("Only taken over while awake.", 0.8, 0.8, 0.8)
 end)
 
-local function checkbox(label, field, anchor, x, tip)
+local function checkbox(label, field, anchor, x, y, tip)
 	local box = CreateFrame("CheckButton", nil, ui, "UICheckButtonTemplate")
 	box:SetSize(20, 20)
-	box:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", x, -2)
+	box:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", x, y)
 	box.label = box:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
 	box.label:SetPoint("LEFT", box, "RIGHT", 0, 1)
 	box.label:SetText(label)
 	box:SetHitRectInsets(0, -box.label:GetStringWidth() - 2, 0, 0)
+	box.field = field
 	box:SetScript("OnClick", function(self)
 		db[field] = self:GetChecked()
 		update()
@@ -365,10 +436,18 @@ local function checkbox(label, field, anchor, x, tip)
 	return box
 end
 
-local lureBox = checkbox("Lure", "autoLure", keyButton, -4,
-	"Puts your best lure on the pole when it has none.")
-local poleBox = checkbox("Pole", "autoPole", keyButton, 46,
-	"Equips your best pole. Your weapons come back when you sleep.")
+local boxes = {
+	checkbox("Lure", "autoLure", keyButton, -4, -2,
+		"Puts your best lure on the pole when it has none."),
+	checkbox("Pole", "autoPole", keyButton, 46, -2,
+		"Equips your best pole. Your weapons come back when you sleep."),
+	checkbox("Loot", "autoLoot", keyButton, 96, -2,
+		"Takes everything you fish up, and what's in the clams and chests it opens."),
+	checkbox("Clams", "openClams", keyButton, -4, -22,
+		"Opens fished-up clams between casts."),
+	checkbox("Chests", "openChests", keyButton, 46, -22,
+		"Opens fished-up crates, chests, trunks and bottles between casts. Locked ones are left alone."),
+}
 
 function refresh()
 	if not char then return end
@@ -381,8 +460,9 @@ function refresh()
 	else
 		keyButton:SetText(db.key and GetBindingText(db.key) or "Set key")
 	end
-	lureBox:SetChecked(db.autoLure)
-	poleBox:SetChecked(db.autoPole)
+	for _, box in ipairs(boxes) do
+		box:SetChecked(db[box.field])
+	end
 end
 
 -- Events ------------------------------------------------------------------
@@ -396,11 +476,17 @@ events:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_STOP", "player")
 events:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
 events:RegisterEvent("BAG_UPDATE_DELAYED")
+events:RegisterEvent("LOOT_READY")
+events:RegisterEvent("LOOT_CLOSED")
 events:SetScript("OnEvent", function(_, event)
 	if event == "PLAYER_LOGIN" then
-		TackleMasterDB = TackleMasterDB or { autoLure = true, autoPole = true }
+		TackleMasterDB = TackleMasterDB or {}
 		TackleMasterCharDB = TackleMasterCharDB or {}
 		db, char = TackleMasterDB, TackleMasterCharDB
+		for field, value in pairs(DEFAULTS) do
+			if db[field] == nil then db[field] = value end
+		end
+		db.fished = db.fished or {}
 		if db.point then
 			ui:ClearAllPoints()
 			ui:SetPoint(db.point[1], UIParent, db.point[2], db.point[3], db.point[4])
@@ -415,6 +501,8 @@ events:SetScript("OnEvent", function(_, event)
 		-- action for the fight.
 		holdSoftInteract(false)
 		clear()
+	elseif event == "LOOT_READY" then
+		loot()
 	elseif event == "PLAYER_REGEN_ENABLED" then
 		if pendingSleep then
 			pendingSleep = nil

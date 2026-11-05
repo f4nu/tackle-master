@@ -31,6 +31,14 @@ POLE_BONUS = {
     19970: 35,  # Arcanite Fishing Pole
 }
 
+# Containers that are fished up. Loot tables aren't in the client data, so
+# this is kept by hand; the add-on also learns any fished item that opens.
+SEA = [
+    5523, 5524, 7973, 15874,  # clams
+    6307, 6351, 6352, 6353, 6354, 6355, 6356, 6357, 13874, 13875, 13918,
+    20708, 21113, 21150, 21228,  # bottles, crates, chests, trunks
+]
+
 
 def fetch(url):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA)) as r:
@@ -93,6 +101,13 @@ def main():
         if bonus:
             lures[int(r["ItemID"])] = (bonus,) + need(r["ItemID"])
 
+    # Clams by their English name, read here so the add-on needs no text.
+    # Locked boxes need a lockpick or key first and are left alone.
+    sea = {}
+    for id in SEA:
+        row = sparse[str(id)]
+        sea[id] = ('"clam"' if "Clam" in row["Display_lang"] else '"chest"', "true" if row["LockID"] != "0" else "false")
+
     def entries(d):
         return "".join(f"\t[{k}] = {{ {', '.join(map(str, v))} }},\n" for k, v in sorted(d.items()))
 
@@ -104,8 +119,9 @@ def main():
         f.write("".join(f"\t[{s}] = true,\n" for s in fishing))
         f.write("}\n\n-- item = { fishing bonus, required level, required fishing skill, item level }\n")
         f.write("ns.POLES = {\n" + entries(poles) + "}\n\n")
-        f.write("ns.LURES = {\n" + entries(lures) + "}\n")
-    print(f"{build}: {len(fishing)} fishing spells, {len(poles)} poles, {len(lures)} lures")
+        f.write("ns.LURES = {\n" + entries(lures) + "}\n\n")
+        f.write("-- item = { kind, locked }\nns.SEA = {\n" + entries(sea) + "}\n")
+    print(f"{build}: {len(fishing)} fishing spells, {len(poles)} poles, {len(lures)} lures, {len(sea)} sea containers")
 
 
 if __name__ == "__main__":
