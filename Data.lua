@@ -31,3 +31,26 @@ ns.LURES = {
 	[259846] = { 25, 0, 1, 48 },
 	[268880] = { 25, 0, 0, 10 },
 }
+
+-- item = { kind, locked }
+ns.SEA = {
+	[5523] = { "clam", false },
+	[5524] = { "clam", false },
+	[6307] = { "chest", false },
+	[6351] = { "chest", false },
+	[6352] = { "chest", false },
+	[6353] = { "chest", false },
+	[6354] = { "chest", true },
+	[6355] = { "chest", true },
+	[6356] = { "chest", false },
+	[6357] = { "chest", false },
+	[7973] = { "clam", false },
+	[13874] = { "chest", false },
+	[13875] = { "chest", true },
+	[13918] = { "chest", true },
+	[15874] = { "clam", false },
+	[20708] = { "chest", false },
+	[21113] = { "chest", false },
+	[21150] = { "chest", false },
+	[21228] = { "chest", false },
+}
