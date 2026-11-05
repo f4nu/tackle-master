@@ -19,12 +19,15 @@ local TICK = 0.2
 -- let go: on sleep, in combat, and at login after a reload or crash.
 local HOLDS = {
 	-- While the line is out: the bobber becomes the soft interact target,
-	-- which the reel uses, wherever the mouse is.
+	-- which the reel uses wherever the mouse is, with a hook above it.
 	soft = {
 		SoftTargetInteract = "3",
 		SoftTargetInteractRange = "15",
 		SoftTargetInteractRangeIsHard = "0",
 		SoftTargetInteractArc = "2",
+		-- The game's hook icon above the bobber.
+		SoftTargetIconGameObject = "1",
+		SoftTargetIconInteract = "1",
 	},
 	-- While awake, as options.
 	mobs = { SoftTargetEnemy = "0", SoftTargetFriend = "0" },
