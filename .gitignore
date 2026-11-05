@@ -1,0 +1,3 @@
+*.zip
+.release/
+__pycache__/
