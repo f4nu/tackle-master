@@ -15,16 +15,26 @@ local _, ns = ...
 local POLE_SLOT, OFF_SLOT = 16, 17
 local FISHING_SKILL = 356
 local TICK = 0.2
--- Soft interact lets the reel find the bobber with the mouse anywhere.
--- Held only while the line is out, then put back as it was.
-local SOFT_CVARS = {
-	SoftTargetInteract = "3",
-	SoftTargetInteractRange = "15",
-	SoftTargetInteractRangeIsHard = "0",
-	SoftTargetInteractArc = "2",
+-- Game settings held while fishing, each group put back as it was when
+-- let go: on sleep, in combat, and at login after a reload or crash.
+local HOLDS = {
+	-- While the line is out: the bobber becomes the soft interact target,
+	-- which the reel uses, wherever the mouse is.
+	soft = {
+		SoftTargetInteract = "3",
+		SoftTargetInteractRange = "15",
+		SoftTargetInteractRangeIsHard = "0",
+		SoftTargetInteractArc = "2",
+	},
+	-- While awake, as options.
+	mobs = { SoftTargetEnemy = "0", SoftTargetFriend = "0" },
+	plates = { nameplateShowEnemies = "0", nameplateShowFriendlyPlayers = "0", nameplateShowFriendlyNpcs = "0" },
 }
 
-local DEFAULTS = { autoLure = true, autoPole = true, autoLoot = true, openClams = true, openChests = true }
+local DEFAULTS = {
+	autoLure = true, autoPole = true, autoLoot = true, openClams = true, openChests = true,
+	ignoreMobs = true, hidePlates = true,
+}
 
 local db, char
 
@@ -137,26 +147,32 @@ local function decide()
 	return "cast"
 end
 
--- Soft interact -----------------------------------------------------------
+-- Held settings -----------------------------------------------------------
 
-local savedCVars
-
-local function holdSoftInteract(on)
-	if on and not savedCVars then
-		savedCVars = {}
-		for name, value in pairs(SOFT_CVARS) do
-			local old = C_CVar.GetCVar(name)
-			if old ~= value then
-				savedCVars[name] = old
+-- The old values live in the saved variables, so a reload while holding
+-- still gets them back.
+local function hold(group, on)
+	local held = db.held
+	if on and not held[group] then
+		local old = {}
+		for name, value in pairs(HOLDS[group]) do
+			local was = C_CVar.GetCVar(name)
+			if was and was ~= value then
+				old[name] = was
 				C_CVar.SetCVar(name, value)
 			end
 		end
-	elseif not on and savedCVars then
-		for name, old in pairs(savedCVars) do
-			C_CVar.SetCVar(name, old)
+		held[group] = old
+	elseif not on and held[group] then
+		for name, was in pairs(held[group]) do
+			C_CVar.SetCVar(name, was)
 		end
-		savedCVars = nil
+		held[group] = nil
 	end
+end
+
+local function releaseAll()
+	for group in pairs(HOLDS) do hold(group, false) end
 end
 
 -- Weapons -----------------------------------------------------------------
@@ -230,14 +246,18 @@ local function update()
 	if InCombatLockdown() then return end
 	checkOpening()
 	local step, item = decide()
-	holdSoftInteract(step == "reel")
+	hold("soft", step == "reel")
+	hold("mobs", char.awake and db.ignoreMobs)
+	hold("plates", char.awake and db.hidePlates)
 	if not db.key then
 		if current then clear() end
 	elseif (step ~= current or item ~= currentItem) and not keyHeld() then
 		ClearOverrideBindings(owner)
 		current, currentItem = step, item
 		if step == "reel" then
-			SetOverrideBinding(owner, true, db.key, "INTERACTMOUSEOVER")
+			-- The soft interact target only: the bobber, never a mob under
+			-- the mouse.
+			SetOverrideBinding(owner, true, db.key, "INTERACTTARGET")
 		elseif step == "cast" then
 			SetOverrideBindingSpell(owner, true, db.key, C_Spell.GetSpellName(7620))
 		elseif step == "pole" then
@@ -295,7 +315,7 @@ local function setAwake(awake)
 	elseif awake then
 		update()
 	else
-		holdSoftInteract(false)
+		releaseAll()
 		clear()
 		restoreWeapons()
 	end
@@ -305,7 +325,7 @@ end
 -- UI ----------------------------------------------------------------------
 
 local ui = CreateFrame("Frame", "TackleMasterFrame", UIParent, "BackdropTemplate")
-ui:SetSize(196, 70)
+ui:SetSize(196, 90)
 ui:SetBackdrop({
 	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
 	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
@@ -447,6 +467,10 @@ local boxes = {
 		"Opens fished-up clams between casts."),
 	checkbox("Chests", "openChests", keyButton, 46, -22,
 		"Opens fished-up crates, chests, trunks and bottles between casts. Locked ones are left alone."),
+	checkbox("No mobs", "ignoreMobs", keyButton, -4, -42,
+		"While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep."),
+	checkbox("No plates", "hidePlates", keyButton, 66, -42,
+		"While awake, nameplates are hidden. Back as it was when you sleep, and during fights."),
 }
 
 function refresh()
@@ -487,6 +511,8 @@ events:SetScript("OnEvent", function(_, event)
 			if db[field] == nil then db[field] = value end
 		end
 		db.fished = db.fished or {}
+		db.held = db.held or {}
+		releaseAll()
 		if db.point then
 			ui:ClearAllPoints()
 			ui:SetPoint(db.point[1], UIParent, db.point[2], db.point[3], db.point[4])
@@ -497,9 +523,9 @@ events:SetScript("OnEvent", function(_, event)
 		update()
 		refresh()
 	elseif event == "PLAYER_REGEN_DISABLED" then
-		-- Fires just before the lockdown: the key goes back to its usual
-		-- action for the fight.
-		holdSoftInteract(false)
+		-- Fires just before the lockdown: the key and the settings go back
+		-- to normal for the fight.
+		releaseAll()
 		clear()
 	elseif event == "LOOT_READY" then
 		loot()
