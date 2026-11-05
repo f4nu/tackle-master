@@ -125,7 +125,17 @@ local function checkOpening()
 	end
 end
 
--- The next step, and the item it uses.
+-- The highest fishing rank known. By ID: right after a reload spell names
+-- may not be loaded yet.
+local function fishingSpell()
+	local best
+	for id in pairs(ns.FISHING) do
+		if IsPlayerSpell(id) and (not best or id > best) then best = id end
+	end
+	return best
+end
+
+-- The next step, and the item (or spell) it uses.
 local function decide()
 	if not char.awake or UnitIsDeadOrGhost("player") or IsMounted() or UnitOnTaxi("player") then
 		return nil
@@ -144,7 +154,9 @@ local function decide()
 		local box = containerInBags()
 		if box then return "open", box end
 	end
-	return "cast"
+	-- Not knowing fishing leaves the key alone.
+	local spell = fishingSpell()
+	return spell and "cast", spell
 end
 
 -- Held settings -----------------------------------------------------------
@@ -259,17 +271,23 @@ local function update()
 			-- the mouse.
 			SetOverrideBinding(owner, true, db.key, "INTERACTTARGET")
 		elseif step == "cast" then
-			SetOverrideBindingSpell(owner, true, db.key, C_Spell.GetSpellName(7620))
+			button:SetAttribute("step", step)
+			button:SetAttribute("type", "spell")
+			button:SetAttribute("spell", item)
+			SetOverrideBindingClick(owner, true, db.key, button:GetName())
 		elseif step == "pole" then
 			button:SetAttribute("step", step)
+			button:SetAttribute("type", "macro")
 			button:SetAttribute("macrotext", "/equip item:" .. item)
 			SetOverrideBindingClick(owner, true, db.key, button:GetName())
 		elseif step == "lure" then
 			button:SetAttribute("step", step)
+			button:SetAttribute("type", "macro")
 			button:SetAttribute("macrotext", "/use item:" .. item .. "\n/use " .. POLE_SLOT)
 			SetOverrideBindingClick(owner, true, db.key, button:GetName())
 		elseif step == "open" then
 			button:SetAttribute("step", step)
+			button:SetAttribute("type", "macro")
 			button:SetAttribute("item", item)
 			button:SetAttribute("macrotext", "/use item:" .. item)
 			SetOverrideBindingClick(owner, true, db.key, button:GetName())
