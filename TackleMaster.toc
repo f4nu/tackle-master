@@ -1,6 +1,7 @@
 ## Interface: 16001
 ## Title: TackleMaster
 ## Notes: One key to fish: equips your best pole, puts on a lure, casts and reels in. Asleep, the key is yours again.
+## IconTexture: Interface\AddOns\TackleMaster\Media\icon
 ## Author: Fanu
 ## Version: @project-version@
 ## SavedVariables: TackleMasterDB

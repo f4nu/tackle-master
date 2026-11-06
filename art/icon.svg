@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#15356a"/>
+      <stop offset="0.55" stop-color="#2d6fae"/>
+      <stop offset="1" stop-color="#4fa3d6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#9fe0ff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#9fe0ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="waterBack" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a86c0"/>
+      <stop offset="1" stop-color="#17598f"/>
+    </linearGradient>
+    <linearGradient id="waterFront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c6aa6"/>
+      <stop offset="1" stop-color="#0c3561"/>
+    </linearGradient>
+    <linearGradient id="foam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4fbff"/>
+      <stop offset="1" stop-color="#a6daf7"/>
+    </linearGradient>
+    <linearGradient id="fishL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd25c"/>
+      <stop offset="1" stop-color="#f5861f"/>
+    </linearGradient>
+    <linearGradient id="fishLFin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7a233"/>
+      <stop offset="1" stop-color="#d95f14"/>
+    </linearGradient>
+    <linearGradient id="fishR" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd25c"/>
+      <stop offset="1" stop-color="#f5861f"/>
+    </linearGradient>
+    <linearGradient id="fishRFin" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7a233"/>
+      <stop offset="1" stop-color="#d95f14"/>
+    </linearGradient>
+    <linearGradient id="bobRed" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff6a5a"/>
+      <stop offset="0.45" stop-color="#e5261f"/>
+      <stop offset="1" stop-color="#8e0f10"/>
+    </linearGradient>
+    <linearGradient id="bobWhite" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.45" stop-color="#fbf4e6"/>
+      <stop offset="1" stop-color="#c2b7a4"/>
+    </linearGradient>
+    <linearGradient id="quill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff9ea"/>
+      <stop offset="1" stop-color="#d9cfb8"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect x="14" y="14" width="484" height="484" rx="34"/>
+    </clipPath>
+    <clipPath id="bobberClip">
+      <!-- the float: an egg, fat at the shoulders, narrower at the foot -->
+      <path id="bobberShape" d="M -76 -24 C -76 -76 -42 -110 0 -110 C 42 -110 76 -76 76 -24 C 76 40 46 100 0 100 C -46 100 -76 40 -76 -24 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- frame: a dark rounded square like the item icons it sits next to -->
+  <rect x="0" y="0" width="512" height="512" rx="46" fill="#0d1526"/>
+
+  <g clip-path="url(#frame)">
+    <rect x="0" y="0" width="512" height="512" fill="url(#sky)"/>
+    <ellipse cx="256" cy="300" rx="230" ry="190" fill="url(#glow)"/>
+
+    <!-- back water, behind the bobber -->
+    <path d="M -130 372 C -97 372 -82 352 -52 352 C -28 352 -19 372 20 372 C 53 372 68 352 98 352 C 122 352 131 372 170 372 C 203 372 218 352 248 352 C 272 352 281 372 320 372 C 353 372 368 352 398 352 C 422 352 431 372 470 372 C 503 372 518 352 548 352 C 572 352 581 372 620 372 C 653 372 668 352 698 352 C 722 352 731 372 770 372 L 770 560 L -130 560 Z" fill="url(#foam)" stroke="#1b1a2e" stroke-width="9"/>
+    <path d="M -130 394 C -97 394 -82 374 -52 374 C -28 374 -19 394 20 394 C 53 394 68 374 98 374 C 122 374 131 394 170 394 C 203 394 218 374 248 374 C 272 374 281 394 320 394 C 353 394 368 374 398 374 C 422 374 431 394 470 394 C 503 394 518 374 548 374 C 572 374 581 394 620 394 C 653 394 668 374 698 374 C 722 374 731 394 770 394 L 770 560 L -130 560 Z" fill="url(#waterBack)"/>
+
+    <!-- the bobber, tilted a little, as it floats -->
+    <g transform="translate(256 324) rotate(5) scale(1.08)">
+      <use href="#bobberShape" fill="none" stroke="#1b1a2e" stroke-width="24" stroke-linejoin="round"/>
+      <g clip-path="url(#bobberClip)">
+        <rect x="-90" y="-130" width="180" height="250" fill="url(#bobWhite)"/>
+        <!-- red top; the split bows down in the middle, we look at it from a little above -->
+        <path d="M -90 -130 L 90 -130 L 90 -2 C 60 18 -60 18 -90 -2 Z" fill="url(#bobRed)"/>
+        <path d="M -90 -2 C -60 18 60 18 90 -2" fill="none" stroke="#1b1a2e" stroke-width="5" opacity="0.4"/>
+        <ellipse cx="-34" cy="-40" rx="11" ry="46" fill="#ffffff" opacity="0.4"/>
+      </g>
+      <!-- the quill: cream vane on one side of the shaft, grey on the other -->
+      <g transform="translate(0 -110) rotate(12)">
+        <path d="M 0 -6 C -38 -40 -44 -96 -6 -146 C 4 -154 14 -146 16 -136 C 36 -92 30 -40 0 -6 Z" fill="url(#quill)" stroke="#1b1a2e" stroke-width="10" stroke-linejoin="round"/>
+        <path d="M 2 -10 C 14 -44 20 -96 10 -134 C 30 -92 26 -40 2 -10 Z" fill="#b9c2c8" opacity="0.8"/>
+        <path d="M 0 -8 C 2 -50 8 -98 10 -134" fill="none" stroke="#7d6a4a" stroke-width="5" stroke-linecap="round"/>
+        <path d="M -30 -64 L -10 -58 M -34 -92 L -12 -84 M -28 -118 L -8 -108" stroke="#1b1a2e" stroke-width="5" stroke-linecap="round" opacity="0.45"/>
+      </g>
+      <circle cx="0" cy="-110" r="14" fill="#3b3b4f" stroke="#1b1a2e" stroke-width="8"/>
+    </g>
+
+    <!-- two fish leaping over it -->
+    <g stroke="#1b1a2e" stroke-width="11" stroke-linejoin="round">
+      <path d="M 26.4 292.4 Q 7.4 305.3 -6 322 Q 16.7 313.6 27.7 310.8 Q 36 317.3 50.2 334.2 Q 47.6 314.6 38.5 295.7 Z" fill="url(#fishLFin)"/>
+      <path d="M 86 167.2 Q 64.1 158.7 37.1 191 Q 21 235.8 37.6 249.5 Z" fill="url(#fishLFin)"/>
+      <path d="M 173.1 128.2 C 163.8 128.8 154.2 128.2 145.2 129.9 C 136.1 131.6 127.2 134.6 118.8 138.4 C 110.5 142.1 102.4 146.9 94.9 152.3 C 87.5 157.7 80.5 163.9 74.1 170.5 C 67.8 177.2 61.9 184.5 56.8 192.1 C 51.7 199.7 47.2 207.9 43.3 216.1 C 39.5 224.4 36.3 233 33.7 241.6 C 31.1 250.2 29.1 259.1 27.7 267.9 C 26.3 276.6 26 285.4 25.2 294.2 L 38.6 297.8 C 42.9 290.8 46.9 283.6 51.4 277 C 56 270.4 60.8 264.1 65.7 258.1 C 70.7 252.1 75.8 246.4 81 240.9 C 86.2 235.4 91.5 230.2 96.9 225.1 C 102.2 220 107.6 215.1 113 210.2 C 118.4 205.3 123.8 200.6 129.3 195.7 C 134.7 190.9 140.2 186.1 145.8 181.1 C 151.3 176 156.9 171 162.6 165.5 C 168.4 160 174.4 153.7 180.2 147.8 Q 187.5 134.2 173.1 128.2 Z" fill="url(#fishL)"/>
+    </g>
+    <path d="M 180.2 147.8 C 174.4 153.7 168.4 160 162.6 165.5 C 156.9 171 151.3 176 145.8 181.1 C 140.2 186.1 134.7 190.9 129.3 195.7 C 123.8 200.6 118.4 205.3 113 210.2 C 107.6 215.1 102.2 220 96.9 225.1 C 91.5 230.2 86.2 235.4 81 240.9 C 75.8 246.4 70.7 252.1 65.7 258.1 C 60.8 264.1 56 270.4 51.4 277 C 46.9 283.6 42.9 290.8 38.6 297.8 L 33.6 296.4 C 36.6 288.8 39.2 281 42.5 273.6 C 45.9 266.2 49.7 258.9 53.7 251.9 C 57.8 244.9 62.2 238.1 66.9 231.6 C 71.6 225.1 76.6 218.8 81.8 212.7 C 87.1 206.7 92.7 200.9 98.4 195.3 C 104.2 189.8 110.2 184.5 116.4 179.4 C 122.6 174.4 129 169.6 135.7 165.1 C 142.3 160.5 149.1 156.2 156.1 152.1 C 163.1 148 170.4 144.3 177.5 140.4 Z" fill="#ffe7b0" opacity="0.85"/>
+    <path d="M 137.9 182.8 Q 140.9 200.4 124.6 215.6 L 116.8 201.4 Z" fill="#e2661c" stroke="#1b1a2e" stroke-width="7" stroke-linejoin="round"/>
+    <circle cx="146" cy="146.4" r="10" fill="#1b1a2e"/>
+    <circle cx="143" cy="143.4" r="3.2" fill="#ffffff"/>
+    <g stroke="#1b1a2e" stroke-width="11" stroke-linejoin="round">
+      <path d="M 485.6 292.4 Q 504.6 305.3 518 322 Q 495.3 313.6 484.3 310.8 Q 476 317.3 461.8 334.2 Q 464.4 314.6 473.5 295.7 Z" fill="url(#fishRFin)"/>
+      <path d="M 426 167.2 Q 447.9 158.7 474.9 191 Q 491 235.8 474.4 249.5 Z" fill="url(#fishRFin)"/>
+      <path d="M 338.9 128.2 C 348.2 128.8 357.8 128.2 366.8 129.9 C 375.9 131.6 384.8 134.6 393.2 138.4 C 401.5 142.1 409.6 146.9 417.1 152.3 C 424.5 157.7 431.5 163.9 437.9 170.5 C 444.2 177.2 450.1 184.5 455.2 192.1 C 460.3 199.7 464.8 207.9 468.7 216.1 C 472.5 224.4 475.7 233 478.3 241.6 C 480.9 250.2 482.9 259.1 484.3 267.9 C 485.7 276.6 486 285.4 486.8 294.2 L 473.4 297.8 C 469.1 290.8 465.1 283.6 460.6 277 C 456 270.4 451.2 264.1 446.3 258.1 C 441.3 252.1 436.2 246.4 431 240.9 C 425.8 235.4 420.5 230.2 415.1 225.1 C 409.8 220 404.4 215.1 399 210.2 C 393.6 205.3 388.2 200.6 382.7 195.7 C 377.3 190.9 371.8 186.1 366.2 181.1 C 360.7 176 355.1 171 349.4 165.5 C 343.6 160 337.6 153.7 331.8 147.8 Q 324.5 134.2 338.9 128.2 Z" fill="url(#fishR)"/>
+    </g>
+    <path d="M 331.8 147.8 C 337.6 153.7 343.6 160 349.4 165.5 C 355.1 171 360.7 176 366.2 181.1 C 371.8 186.1 377.3 190.9 382.7 195.7 C 388.2 200.6 393.6 205.3 399 210.2 C 404.4 215.1 409.8 220 415.1 225.1 C 420.5 230.2 425.8 235.4 431 240.9 C 436.2 246.4 441.3 252.1 446.3 258.1 C 451.2 264.1 456 270.4 460.6 277 C 465.1 283.6 469.1 290.8 473.4 297.8 L 478.4 296.4 C 475.4 288.8 472.8 281 469.5 273.6 C 466.1 266.2 462.3 258.9 458.3 251.9 C 454.2 244.9 449.8 238.1 445.1 231.6 C 440.4 225.1 435.4 218.8 430.2 212.7 C 424.9 206.7 419.3 200.9 413.6 195.3 C 407.8 189.8 401.8 184.5 395.6 179.4 C 389.4 174.4 383 169.6 376.3 165.1 C 369.7 160.5 362.9 156.2 355.9 152.1 C 348.9 148 341.6 144.3 334.5 140.4 Z" fill="#ffe7b0" opacity="0.85"/>
+    <path d="M 374.1 182.8 Q 371.1 200.4 387.4 215.6 L 395.2 201.4 Z" fill="#e2661c" stroke="#1b1a2e" stroke-width="7" stroke-linejoin="round"/>
+    <circle cx="366" cy="146.4" r="10" fill="#1b1a2e"/>
+    <circle cx="363" cy="143.4" r="3.2" fill="#ffffff"/>
+
+    <!-- splashes where they left the water -->
+    <g fill="#ffffff" opacity="0.9">
+      <circle cx="66" cy="326" r="8"/><circle cx="46" cy="350" r="5"/><circle cx="88" cy="346" r="4"/>
+      <circle cx="446" cy="326" r="8"/><circle cx="466" cy="350" r="5"/><circle cx="424" cy="346" r="4"/>
+    </g>
+
+    <!-- front waves -->
+    <path d="M -158 428 C -129.8 428 -117 404 -91.4 404 C -71 404 -63.3 428 -30 428 C -1.8 428 11 404 36.6 404 C 57 404 64.7 428 98 428 C 126.2 428 139 404 164.6 404 C 185 404 192.7 428 226 428 C 254.2 428 267 404 292.6 404 C 313 404 320.7 428 354 428 C 382.2 428 395 404 420.6 404 C 441 404 448.7 428 482 428 C 510.2 428 523 404 548.6 404 C 569 404 576.7 428 610 428 C 638.2 428 651 404 676.6 404 C 697 404 704.7 428 738 428 L 738 560 L -158 560 Z" fill="url(#foam)" stroke="#1b1a2e" stroke-width="9"/>
+    <path d="M -158 454 C -129.8 454 -117 430 -91.4 430 C -71 430 -63.3 454 -30 454 C -1.8 454 11 430 36.6 430 C 57 430 64.7 454 98 454 C 126.2 454 139 430 164.6 430 C 185 430 192.7 454 226 454 C 254.2 454 267 430 292.6 430 C 313 430 320.7 454 354 454 C 382.2 454 395 430 420.6 430 C 441 430 448.7 454 482 454 C 510.2 454 523 430 548.6 430 C 569 430 576.7 454 610 454 C 638.2 454 651 430 676.6 430 C 697 430 704.7 454 738 454 L 738 560 L -158 560 Z" fill="url(#waterFront)"/>
+    <path d="M -74 490 C -51.1 490 -40.7 472 -19.9 472 C -3.3 472 3 490 30 490 C 52.9 490 63.3 472 84.1 472 C 100.7 472 107 490 134 490 C 156.9 490 167.3 472 188.1 472 C 204.7 472 211 490 238 490 C 260.9 490 271.3 472 292.1 472 C 308.7 472 315 490 342 490 C 364.9 490 375.3 472 396.1 472 C 412.7 472 419 490 446 490 C 468.9 490 479.3 472 500.1 472 C 516.7 472 523 490 550 490 C 572.9 490 583.3 472 604.1 472 C 620.7 472 627 490 654 490 C 676.9 490 687.3 472 708.1 472 C 724.7 472 731 490 758 490 L 758 560 L -74 560 Z" fill="url(#foam)" stroke="#1b1a2e" stroke-width="9"/>
+    <path d="M -74 512 C -51.1 512 -40.7 494 -19.9 494 C -3.3 494 3 512 30 512 C 52.9 512 63.3 494 84.1 494 C 100.7 494 107 512 134 512 C 156.9 512 167.3 494 188.1 494 C 204.7 494 211 512 238 512 C 260.9 512 271.3 494 292.1 494 C 308.7 494 315 512 342 512 C 364.9 512 375.3 494 396.1 494 C 412.7 494 419 512 446 512 C 468.9 512 479.3 494 500.1 494 C 516.7 494 523 512 550 512 C 572.9 512 583.3 494 604.1 494 C 620.7 494 627 512 654 512 C 676.9 512 687.3 494 708.1 494 C 724.7 494 731 512 758 512 L 758 560 L -74 560 Z" fill="#0c3561"/>
+  </g>
+
+  <!-- frame edge -->
+  <rect x="7" y="7" width="498" height="498" rx="40" fill="none" stroke="#0d1526" stroke-width="14"/>
+</svg>
