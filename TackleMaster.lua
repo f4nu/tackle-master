@@ -194,6 +194,9 @@ end
 local CAM_ZOOM, CAM_LINGER = 4, 2.5
 local cam = CreateFrame("Frame")
 local camZoom, camOutAt, camTick = nil, nil, 0
+-- Zooming by hand voids the view until the line comes in. camOwn marks
+-- the zooms made here.
+local camVoid, camOwn = false, false
 
 -- DialogueUI's fit: the offset that puts the character aside at a zoom.
 local function shoulderFor(zoom)
@@ -215,14 +218,16 @@ local function camRelease()
 	cam:Hide()
 	-- After a reload there is no zoom to go back to.
 	if camZoom and camZoom > GetCameraZoom() + 0.1 then
+		camOwn = true
 		CameraZoomOut(camZoom - GetCameraZoom())
+		camOwn = false
 	end
 	camZoom, camOutAt = nil, nil
 end
 
 local function camIn()
 	camOutAt = nil
-	if db.held.cam then return end
+	if db.held.cam or camVoid then return end
 	local held = { shoulder = C_CVar.GetCVar("test_cameraOverShoulder") or "0", cvars = {} }
 	for name, value in pairs(CAM_CVARS) do
 		local was = C_CVar.GetCVar(name)
@@ -233,11 +238,16 @@ local function camIn()
 	end
 	db.held.cam = held
 	camZoom = GetCameraZoom()
-	if camZoom > CAM_ZOOM + 0.1 then CameraZoomIn(camZoom - CAM_ZOOM) end
+	if camZoom > CAM_ZOOM + 0.1 then
+		camOwn = true
+		CameraZoomIn(camZoom - CAM_ZOOM)
+		camOwn = false
+	end
 	cam:Show()
 end
 
 local function camOut()
+	camVoid = false
 	if db.held.cam and not camOutAt then camOutAt = GetTime() + CAM_LINGER end
 end
 
@@ -253,6 +263,15 @@ cam:SetScript("OnUpdate", function(_, dt)
 	camTick = 0
 	C_CVar.SetCVar("test_cameraOverShoulder", shoulderFor(GetCameraZoom()))
 end)
+
+-- A zoom by hand keeps the zoom it chose and drops the pan.
+local function camManual()
+	if camOwn or not (db and db.held.cam) then return end
+	camVoid, camZoom = true, nil
+	camRelease()
+end
+hooksecurefunc("CameraZoomIn", camManual)
+hooksecurefunc("CameraZoomOut", camManual)
 
 local function releaseAll()
 	for group in pairs(HOLDS) do hold(group, false) end
@@ -744,7 +763,7 @@ header("While fishing")
 row({
 	{ "No mobs", "ignoreMobs", "While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep." },
 	{ "No plates", "hidePlates", "While awake, nameplates are hidden. Back as it was when you sleep, and during fights." },
-	{ "Shoulder", "shoulderCam", "While the line is out, the camera zooms in over your shoulder. Back as it was after the catch." },
+	{ "Shoulder", "shoulderCam", "While the line is out, the camera zooms in over your shoulder. Back as it was after the catch, or as soon as you zoom yourself." },
 })
 options:SetHeight(-y)
 
