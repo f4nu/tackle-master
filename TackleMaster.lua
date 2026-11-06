@@ -200,10 +200,17 @@ local function shoulderFor(zoom)
 	return zoom * 0.4314 + 0.1057
 end
 
+-- "Keep character centred" overrides the pan: off while it runs, as
+-- DialogueUI does.
+local CAM_CVARS = { CameraKeepCharacterCentered = "0", CameraReduceUnexpectedMovement = "0" }
+
 local function camRelease()
 	local held = db.held.cam
 	if not held then return end
 	C_CVar.SetCVar("test_cameraOverShoulder", held.shoulder)
+	for name, was in pairs(held.cvars or {}) do
+		C_CVar.SetCVar(name, was)
+	end
 	db.held.cam = nil
 	cam:Hide()
 	-- After a reload there is no zoom to go back to.
@@ -216,7 +223,15 @@ end
 local function camIn()
 	camOutAt = nil
 	if db.held.cam then return end
-	db.held.cam = { shoulder = C_CVar.GetCVar("test_cameraOverShoulder") or "0" }
+	local held = { shoulder = C_CVar.GetCVar("test_cameraOverShoulder") or "0", cvars = {} }
+	for name, value in pairs(CAM_CVARS) do
+		local was = C_CVar.GetCVar(name)
+		if was and was ~= value then
+			held.cvars[name] = was
+			C_CVar.SetCVar(name, value)
+		end
+	end
+	db.held.cam = held
 	camZoom = GetCameraZoom()
 	if camZoom > CAM_ZOOM + 0.1 then CameraZoomIn(camZoom - CAM_ZOOM) end
 	cam:Show()
@@ -470,12 +485,9 @@ toggle.glow:SetAllPoints(toggle.icon)
 toggle.glow:SetAlpha(0.35)
 if toggle.icon:GetNumMaskTextures() > 0 then toggle.glow:AddMaskTexture(mask) end
 
--- Awake: a gold rim. Asleep: the icon greys out and dozes under the
+-- Awake: the frame itself turns gold (a separate rim texture sat off the
+-- bevel). Asleep: the icon greys out and dozes under the
 -- player frame's own floating Zzz.
-toggle.rim = toggle:CreateTexture(nil, "OVERLAY")
-toggle.rim:SetPoint("TOPLEFT")
-setAtlas(toggle.rim, "UI-HUD-ActionBar-IconFrame-Border", true)
-toggle.rim:SetVertexColor(1, 0.82, 0, 0.8)
 
 local zzz = toggle:CreateTexture(nil, "OVERLAY", nil, 2)
 if setAtlas(zzz, "UI-HUD-UnitFrame-Player-Rest-Flipbook") then
@@ -784,7 +796,13 @@ function refresh()
 	toggle.icon:SetDesaturated(not awake)
 	toggle.glow:SetDesaturated(not awake)
 	toggle.icon:SetAlpha(awake and 1 or 0.5)
-	toggle.rim:SetShown(awake)
+	if toggle:GetNormalTexture() then
+		if awake then
+			toggle:GetNormalTexture():SetVertexColor(1, 0.8, 0.25)
+		else
+			toggle:GetNormalTexture():SetVertexColor(1, 1, 1)
+		end
+	end
 	toggle.zzz:SetShown(not awake)
 	if toggle.sleepAnim then
 		if awake then
