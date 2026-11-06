@@ -344,70 +344,228 @@ local function setAwake(awake)
 end
 
 -- UI ----------------------------------------------------------------------
+--
+-- The game's own looks, from its atlases: an action button to wake and
+-- sleep, and a metal-framed options window. Only art and templates are
+-- borrowed; no Blizzard function runs from here.
 
-local ui = CreateFrame("Frame", "TackleMasterFrame", UIParent, "BackdropTemplate")
-ui:SetSize(196, 90)
-ui:SetBackdrop({
-	bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-	edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-	edgeSize = 12,
-	insets = { left = 3, right = 3, top = 3, bottom = 3 },
-})
-ui:SetBackdropColor(0.05, 0.05, 0.08, 0.85)
-ui:SetBackdropBorderColor(0.5, 0.5, 0.55)
-ui:SetClampedToScreen(true)
-ui:SetMovable(true)
-ui:EnableMouse(true)
-ui:RegisterForDrag("LeftButton")
-ui:SetScript("OnDragStart", ui.StartMoving)
-ui:SetScript("OnDragStop", function(self)
-	self:StopMovingOrSizing()
-	local point, _, relPoint, x, y = self:GetPoint()
-	db.point = { point, relPoint, x, y }
-end)
+-- An atlas this client lacks must not raise an error.
+local function setAtlas(texture, name, useSize)
+	if not C_Texture.GetAtlasInfo(name) then return false end
+	texture:SetAtlas(name, useSize == true)
+	return true
+end
 
-local function tooltip(frame, build)
+local function tooltip(frame, anchor, build)
 	frame:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_TOP")
-		build()
+		GameTooltip:SetOwner(self, anchor)
+		build(self)
 		GameTooltip:Show()
 	end)
 	frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
-local toggle = CreateFrame("Button", nil, ui)
-toggle:SetSize(40, 40)
-toggle:SetPoint("LEFT", 7, 0)
+local toggleOptions
+
+-- The button, in the action buttons' own dress and size. Left-click wakes
+-- and sleeps, right-click opens the options, dragging moves it.
+local toggle = CreateFrame("Button", "TackleMasterFrame", UIParent)
+toggle:SetSize(45, 45)
+toggle:SetClampedToScreen(true)
+toggle:SetMovable(true)
+toggle:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 toggle:RegisterForDrag("LeftButton")
-toggle:SetScript("OnDragStart", function() ui:StartMoving() end)
-toggle:SetScript("OnDragStop", function() ui:GetScript("OnDragStop")(ui) end)
-toggle.icon = toggle:CreateTexture(nil, "ARTWORK")
+toggle:SetScript("OnDragStart", toggle.StartMoving)
+toggle:SetScript("OnDragStop", function(self)
+	self:StopMovingOrSizing()
+	local point, _, relPoint, x, y = self:GetPoint()
+	db.point = { point, relPoint, x, y }
+end)
+
+toggle.slot = toggle:CreateTexture(nil, "BACKGROUND", nil, -1)
+toggle.slot:SetAllPoints()
+setAtlas(toggle.slot, "UI-HUD-ActionBar-IconFrame-Background")
+toggle.icon = toggle:CreateTexture(nil, "BACKGROUND")
 toggle.icon:SetAllPoints()
 toggle.icon:SetTexture(C_Spell.GetSpellTexture(7620))
-toggle.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-toggle:SetHighlightTexture("Interface/Buttons/ButtonHilight-Square", "ADD")
-toggle.zzz = toggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-toggle.zzz:SetPoint("TOPRIGHT", 2, 2)
-toggle.zzz:SetText("Zzz")
-toggle:SetScript("OnClick", function() setAwake(not char.awake) end)
-tooltip(toggle, function()
+local mask = toggle:CreateMaskTexture()
+mask:SetAllPoints(toggle.icon)
+if setAtlas(mask, "UI-HUD-ActionBar-IconFrame-Mask") then toggle.icon:AddMaskTexture(mask) end
+
+-- Frame, pressed and mouseover art, laid out as on the game's buttons.
+local function buttonArt(name, set, get)
+	if not C_Texture.GetAtlasInfo(name) then return end
+	set(toggle, name)
+	local tex = get(toggle)
+	tex:ClearAllPoints()
+	tex:SetPoint("TOPLEFT")
+	tex:SetSize(46, 45)
+end
+buttonArt("UI-HUD-ActionBar-IconFrame", toggle.SetNormalAtlas, toggle.GetNormalTexture)
+buttonArt("UI-HUD-ActionBar-IconFrame-Down", toggle.SetPushedAtlas, toggle.GetPushedTexture)
+buttonArt("UI-HUD-ActionBar-IconFrame-Mouseover", toggle.SetHighlightAtlas, toggle.GetHighlightTexture)
+
+-- Awake: a gold rim. Asleep: the icon greys out and dozes under the
+-- player frame's own floating Zzz.
+toggle.rim = toggle:CreateTexture(nil, "OVERLAY")
+toggle.rim:SetPoint("TOPLEFT")
+setAtlas(toggle.rim, "UI-HUD-ActionBar-IconFrame-Border", true)
+toggle.rim:SetVertexColor(1, 0.82, 0, 0.8)
+
+local zzz = toggle:CreateTexture(nil, "OVERLAY", nil, 2)
+if setAtlas(zzz, "UI-HUD-UnitFrame-Player-Rest-Flipbook") then
+	zzz:SetSize(30, 30)
+	zzz:SetPoint("CENTER", toggle, "TOPLEFT", 14, -14)
+	local anim = toggle:CreateAnimationGroup()
+	anim:SetLooping("REPEAT")
+	local flip = anim:CreateAnimation("FlipBook")
+	flip:SetTarget(zzz)
+	flip:SetFlipBookRows(7)
+	flip:SetFlipBookColumns(6)
+	flip:SetFlipBookFrames(42)
+	flip:SetDuration(1.5)
+	flip:SetSmoothing("NONE")
+	toggle.sleepAnim = anim
+else
+	zzz = toggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	zzz:SetPoint("TOPLEFT", 5, -4)
+	zzz:SetText("Zzz")
+end
+toggle.zzz = zzz
+
+-- The key, small, where the action buttons show theirs.
+toggle.key = toggle:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
+toggle.key:SetSize(37, 10)
+toggle.key:SetPoint("TOPRIGHT", -5, -5)
+toggle.key:SetJustifyH("RIGHT")
+
+toggle:SetScript("OnClick", function(_, mouse)
+	if mouse == "RightButton" then
+		toggleOptions()
+	else
+		setAwake(not char.awake)
+		PlaySound(char.awake and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+	end
+end)
+tooltip(toggle, "ANCHOR_TOP", function()
 	GameTooltip:AddLine("TackleMaster")
 	if char.awake then
-		GameTooltip:AddLine("Awake: " .. (db.key and ("|cffffffff" .. GetBindingText(db.key) .. "|r fishes") or "set a key first"), 0.4, 1, 0.4)
-		GameTooltip:AddLine("Click to sleep and get your weapons back.", 0.8, 0.8, 0.8)
+		GameTooltip:AddLine("Awake: " .. (db.key and ("|cffffffff" .. GetBindingText(db.key) .. "|r fishes") or "set a key in the options"), 0.4, 1, 0.4)
+		GameTooltip:AddLine("Left-click to sleep and get your weapons back.", 0.8, 0.8, 0.8)
 	else
 		GameTooltip:AddLine("Asleep: the key does its usual thing.", 0.6, 0.6, 0.6)
-		GameTooltip:AddLine("Click to wake.", 0.8, 0.8, 0.8)
+		GameTooltip:AddLine("Left-click to wake.", 0.8, 0.8, 0.8)
 	end
+	GameTooltip:AddLine("Right-click for options.", 0.8, 0.8, 0.8)
 	GameTooltip:AddLine("Drag to move.", 0.5, 0.5, 0.5)
 end)
 
+-- Options window ----------------------------------------------------------
+
+local LEFT, RIGHT, WIDTH = 16, 14, 236
+local INNER = WIDTH - LEFT - RIGHT
+
+local options = CreateFrame("Frame", "TackleMasterOptions", UIParent)
+options:SetWidth(WIDTH)
+options:SetFrameStrata("DIALOG")
+options:SetClampedToScreen(true)
+options:SetClampRectInsets(-8, 2, 16, -8)
+options:EnableMouse(true)
+options:Hide()
+
+-- The game's window dress (DefaultPanelTemplate, offsets as on Forever)
+-- from the same atlases: metal border over a rock background, the title
+-- in the band on top. Returns the frame above the border, for the close
+-- button.
+local function dress(frame, title)
+	local bg = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+	bg:SetTexture("Interface/FrameGeneral/UI-Background-Rock", "REPEAT", "REPEAT")
+	bg:SetHorizTile(true)
+	bg:SetVertTile(true)
+	bg:SetPoint("TOPLEFT", 6, -21)
+	bg:SetPoint("BOTTOMRIGHT", -2, 2)
+	local streaks = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
+	streaks:SetHorizTile(true)
+	setAtlas(streaks, "_UI-Frame-TopTileStreaks", true)
+	streaks:SetPoint("TOPLEFT", 6, -21)
+	streaks:SetPoint("TOPRIGHT", -2, -21)
+
+	local border = CreateFrame("Frame", nil, frame)
+	border:SetAllPoints()
+	border:SetFrameLevel(frame:GetFrameLevel() + 5)
+	local function corner(name, point, x, y)
+		local tex = border:CreateTexture(nil, "OVERLAY")
+		setAtlas(tex, name, true)
+		tex:SetPoint(point, x, y)
+		return tex
+	end
+	local function edge(name, vertical, point, from, fromPoint, point2, to, toPoint)
+		local tex = border:CreateTexture(nil, "OVERLAY")
+		if vertical then tex:SetVertTile(true) else tex:SetHorizTile(true) end
+		setAtlas(tex, name, true)
+		tex:SetPoint(point, from, fromPoint)
+		tex:SetPoint(point2, to, toPoint)
+	end
+	local tl = corner("UI-Frame-Metal-CornerTopLeft", "TOPLEFT", -8, 16)
+	local tr = corner("UI-Frame-Metal-CornerTopRight", "TOPRIGHT", 2, 16)
+	local bl = corner("UI-Frame-Metal-CornerBottomLeft", "BOTTOMLEFT", -8, -8)
+	local br = corner("UI-Frame-Metal-CornerBottomRight", "BOTTOMRIGHT", 2, -8)
+	edge("_UI-Frame-Metal-EdgeTop", false, "TOPLEFT", tl, "TOPRIGHT", "TOPRIGHT", tr, "TOPLEFT")
+	edge("_UI-Frame-Metal-EdgeBottom", false, "BOTTOMLEFT", bl, "BOTTOMRIGHT", "BOTTOMRIGHT", br, "BOTTOMLEFT")
+	edge("!UI-Frame-Metal-EdgeLeft", true, "TOPLEFT", tl, "BOTTOMLEFT", "BOTTOMLEFT", bl, "TOPLEFT")
+	edge("!UI-Frame-Metal-EdgeRight", true, "TOPRIGHT", tr, "BOTTOMRIGHT", "BOTTOMRIGHT", br, "TOPRIGHT")
+
+	local band = CreateFrame("Frame", nil, frame)
+	band:SetAllPoints()
+	band:SetFrameLevel(border:GetFrameLevel() + 1)
+	local text = band:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	text:SetPoint("TOP", 3, -6)
+	text:SetText(title)
+	return band
+end
+
+local close = CreateFrame("Button", nil, dress(options, "TackleMaster"), "UIPanelCloseButton")
+close:SetSize(28, 28)
+close:SetPoint("TOPRIGHT", 0, 3)
+close:SetScript("OnClick", function() options:Hide() end)
+
+-- Tooltips sit beside the window, on the side away from the button.
+local function optionTip(frame, build)
+	tooltip(frame, "ANCHOR_NONE", function()
+		if options.side == "left" then
+			GameTooltip:SetPoint("TOPRIGHT", options, "TOPLEFT", -12, 16)
+		else
+			GameTooltip:SetPoint("TOPLEFT", options, "TOPRIGHT", 12, 16)
+		end
+		build()
+	end)
+end
+
+local y = -30
+
+local function header(title)
+	local text = options:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	text:SetPoint("TOPLEFT", LEFT, y)
+	text:SetText(title)
+	local line = options:CreateTexture(nil, "ARTWORK")
+	if not setAtlas(line, "Options_HorizontalDivider", true) then
+		line:SetColorTexture(1, 0.82, 0, 0.3)
+		line:SetHeight(1)
+	end
+	line:SetPoint("TOPLEFT", LEFT, y - 16)
+	line:SetPoint("TOPRIGHT", -RIGHT, y - 16)
+	y = y - 22
+end
+
+header("Fishing key")
+
 -- The key: click, then press a key or mouse button. Escape cancels,
 -- right-click unbinds.
-local keyButton = CreateFrame("Button", nil, ui, "UIPanelButtonTemplate")
-keyButton:SetSize(142, 20)
-keyButton:SetPoint("TOPLEFT", toggle, "TOPRIGHT", 6, 0)
+local keyButton = CreateFrame("Button", nil, options, "UIPanelButtonTemplate")
+keyButton:SetSize(INNER, 22)
+keyButton:SetPoint("TOPLEFT", LEFT, y)
 keyButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+y = y - 34
 
 local function stopListening()
 	keyButton.listening = false
@@ -450,60 +608,126 @@ keyButton:SetScript("OnClick", function(self, mouse)
 	end
 end)
 keyButton:SetScript("OnHide", stopListening)
-tooltip(keyButton, function()
+optionTip(keyButton, function()
 	GameTooltip:AddLine("Fishing key")
 	GameTooltip:AddLine("Click, then press a key or mouse button.", 1, 1, 1)
 	GameTooltip:AddLine("Right-click to unbind.", 0.8, 0.8, 0.8)
 	GameTooltip:AddLine("Only taken over while awake.", 0.8, 0.8, 0.8)
 end)
 
-local function checkbox(label, field, anchor, x, y, tip)
-	local box = CreateFrame("CheckButton", nil, ui, "UICheckButtonTemplate")
-	box:SetSize(20, 20)
-	box:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", x, y)
-	box.label = box:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-	box.label:SetPoint("LEFT", box, "RIGHT", 0, 1)
-	box.label:SetText(label)
-	box:SetHitRectInsets(0, -box.label:GetStringWidth() - 2, 0, 0)
-	box.field = field
-	box:SetScript("OnClick", function(self)
-		db[field] = self:GetChecked()
-		update()
-	end)
-	tooltip(box, function()
-		GameTooltip:AddLine(label)
-		GameTooltip:AddLine(tip, 1, 1, 1, true)
-	end)
-	return box
+local boxes = {}
+
+-- A row of options, spread over the width.
+local function row(items)
+	local x, step = LEFT, math.floor(INNER / #items)
+	for _, item in ipairs(items) do
+		local label, field, tip = unpack(item)
+		local box = CreateFrame("CheckButton", nil, options, "UICheckButtonTemplate")
+		box:SetSize(24, 24)
+		box:SetPoint("TOPLEFT", x, y)
+		box.Text:SetFontObject("GameFontHighlightSmall")
+		box.Text:ClearAllPoints()
+		box.Text:SetPoint("LEFT", box, "RIGHT", 1, 0)
+		box.Text:SetText(label)
+		box:SetHitRectInsets(0, -box.Text:GetStringWidth() - 4, 0, 0)
+		box.field = field
+		box:SetScript("OnClick", function(self)
+			local on = self:GetChecked()
+			PlaySound(on and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+			db[field] = on
+			update()
+		end)
+		optionTip(box, function()
+			GameTooltip:AddLine(label)
+			GameTooltip:AddLine(tip, 1, 1, 1, true)
+		end)
+		boxes[#boxes + 1] = box
+		x = x + step
+	end
+	y = y - 36
 end
 
-local boxes = {
-	checkbox("Lure", "autoLure", keyButton, -4, -2,
-		"Puts your best lure on the pole when it has none."),
-	checkbox("Pole", "autoPole", keyButton, 46, -2,
-		"Equips your best pole. Your weapons come back when you sleep."),
-	checkbox("Loot", "autoLoot", keyButton, 96, -2,
-		"Takes everything you fish up, and what's in the clams and chests it opens."),
-	checkbox("Clams", "openClams", keyButton, -4, -22,
-		"Opens fished-up clams between casts."),
-	checkbox("Chests", "openChests", keyButton, 46, -22,
-		"Opens fished-up crates, chests, trunks and bottles between casts. Locked ones are left alone."),
-	checkbox("No mobs", "ignoreMobs", keyButton, -4, -42,
-		"While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep."),
-	checkbox("No plates", "hidePlates", keyButton, 66, -42,
-		"While awake, nameplates are hidden. Back as it was when you sleep, and during fights."),
-}
+header("Automatic")
+row({
+	{ "Lure", "autoLure", "Puts your best lure on the pole when it has none." },
+	{ "Pole", "autoPole", "Equips your best pole. Your weapons come back when you sleep." },
+	{ "Loot", "autoLoot", "Takes everything you fish up, and what's in the clams and chests it opens." },
+})
+header("Open")
+row({
+	{ "Clams", "openClams", "Opens fished-up clams between casts." },
+	{ "Chests", "openChests", "Opens fished-up crates, chests, trunks and bottles between casts. Locked ones are left alone." },
+})
+header("While fishing")
+row({
+	{ "No mobs", "ignoreMobs", "While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep." },
+	{ "No plates", "hidePlates", "While awake, nameplates are hidden. Back as it was when you sleep, and during fights." },
+})
+options:SetHeight(-y)
+
+-- Escape closes the window. Every other key goes on to the game: the
+-- propagation flag is set from the handler, and left alone in combat,
+-- when it is protected.
+options:SetScript("OnKeyDown", function(self, key)
+	if InCombatLockdown() then return end
+	if key == "ESCAPE" then
+		self:SetPropagateKeyboardInput(false)
+		self:Hide()
+	else
+		self:SetPropagateKeyboardInput(true)
+	end
+end)
+options:SetScript("OnShow", function(self)
+	if not InCombatLockdown() then
+		self:EnableKeyboard(true)
+		self:SetPropagateKeyboardInput(true)
+	end
+	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
+	refresh()
+end)
+options:SetScript("OnHide", function(self)
+	self:EnableKeyboard(false)
+	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
+end)
+
+-- Opens beside the button, towards the middle of the screen.
+function toggleOptions()
+	if options:IsShown() then
+		options:Hide()
+		return
+	end
+	local x = toggle:GetCenter()
+	options.side = x and x > UIParent:GetWidth() / 2 and "left" or "right"
+	options:ClearAllPoints()
+	if options.side == "left" then
+		options:SetPoint("RIGHT", toggle, "LEFT", -10, 0)
+	else
+		options:SetPoint("LEFT", toggle, "RIGHT", 16, 0)
+	end
+	options:Show()
+end
 
 function refresh()
 	if not char then return end
 	local awake = char.awake
 	toggle.icon:SetDesaturated(not awake)
-	toggle.icon:SetAlpha(awake and 1 or 0.6)
+	toggle.icon:SetAlpha(awake and 1 or 0.5)
+	toggle.rim:SetShown(awake)
 	toggle.zzz:SetShown(not awake)
+	if toggle.sleepAnim then
+		if awake then
+			toggle.sleepAnim:Stop()
+		elseif not toggle.sleepAnim:IsPlaying() then
+			toggle.sleepAnim:Play()
+		end
+	end
+	local shade = awake and 1 or 0.6
+	toggle.key:SetText(db.key and GetBindingText(db.key, 1) or "")
+	toggle.key:SetTextColor(shade, shade, shade)
 	if keyButton.listening then
-		keyButton:SetText("Press a key")
+		keyButton:SetText("Press a key...")
 	else
-		keyButton:SetText(db.key and GetBindingText(db.key) or "Set key")
+		keyButton:SetText(db.key and GetBindingText(db.key) or "Set a key")
 	end
 	for _, box in ipairs(boxes) do
 		box:SetChecked(db[box.field])
@@ -534,13 +758,13 @@ events:SetScript("OnEvent", function(_, event)
 		db.fished = db.fished or {}
 		db.held = db.held or {}
 		releaseAll()
+		toggle:ClearAllPoints()
 		if db.point then
-			ui:ClearAllPoints()
-			ui:SetPoint(db.point[1], UIParent, db.point[2], db.point[3], db.point[4])
+			toggle:SetPoint(db.point[1], UIParent, db.point[2], db.point[3], db.point[4])
 		else
-			ui:SetPoint("CENTER", 0, -200)
+			toggle:SetPoint("CENTER", 0, -200)
 		end
-		ui:SetShown(not db.hidden)
+		toggle:SetShown(not db.hidden)
 		update()
 		refresh()
 	elseif event == "PLAYER_REGEN_DISABLED" then
@@ -569,8 +793,10 @@ SlashCmdList.TACKLEMASTER = function(msg)
 		setAwake(msg == "wake")
 	elseif msg == "toggle" then
 		setAwake(not char.awake)
+	elseif msg == "options" then
+		toggleOptions()
 	else
-		db.hidden = ui:IsShown()
-		ui:SetShown(not db.hidden)
+		db.hidden = toggle:IsShown()
+		toggle:SetShown(not db.hidden)
 	end
 end
