@@ -367,10 +367,12 @@ end
 
 local toggleOptions
 
--- The button, in the action buttons' own dress and size. Left-click wakes
+-- The button, in the action buttons' own dress. Left-click wakes
 -- and sleeps, right-click opens the options, dragging moves it.
 local toggle = CreateFrame("Button", "TackleMasterFrame", UIParent)
 toggle:SetSize(45, 45)
+-- Twice an action button: it is the only thing on screen.
+toggle:SetScale(2)
 toggle:SetClampedToScreen(true)
 toggle:SetMovable(true)
 toggle:RegisterForClicks("LeftButtonUp", "RightButtonUp")
