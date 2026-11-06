@@ -3,6 +3,7 @@ package-as: TackleMaster
 ignore:
   - curseforge
   - tools
+  - art
   - README.md
   - CLAUDE.md
 
