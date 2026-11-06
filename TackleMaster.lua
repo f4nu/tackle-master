@@ -441,16 +441,16 @@ else
 end
 toggle.zzz = zzz
 
--- The key, small, where the action buttons show theirs.
+-- The key, small, centred along the bottom.
 -- On a half-scale layer, so the button's size doesn't blow the text up.
 local keyLayer = CreateFrame("Frame", nil, toggle)
 keyLayer:SetScale(0.5)
 keyLayer:SetAllPoints()
 keyLayer:SetFrameLevel(toggle:GetFrameLevel() + 5)
 toggle.key = keyLayer:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
-toggle.key:SetSize(64, 10)
-toggle.key:SetPoint("TOPRIGHT", -9, -9)
-toggle.key:SetJustifyH("RIGHT")
+toggle.key:SetSize(76, 10)
+toggle.key:SetPoint("BOTTOM", 0, 10)
+toggle.key:SetJustifyH("CENTER")
 
 toggle:SetScript("OnClick", function(_, mouse)
 	if mouse == "RightButton" then
