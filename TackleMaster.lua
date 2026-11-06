@@ -391,8 +391,8 @@ toggle.icon = toggle:CreateTexture(nil, "BACKGROUND")
 toggle.icon:SetAllPoints()
 toggle.icon:SetTexture(C_Spell.GetSpellTexture(7620))
 local mask = toggle:CreateMaskTexture()
-mask:SetAllPoints(toggle.icon)
-if setAtlas(mask, "UI-HUD-ActionBar-IconFrame-Mask") then toggle.icon:AddMaskTexture(mask) end
+mask:SetPoint("CENTER", toggle.icon)
+if setAtlas(mask, "UI-HUD-ActionBar-IconFrame-Mask", true) then toggle.icon:AddMaskTexture(mask) end
 
 -- Frame, pressed and mouseover art, laid out as on the game's buttons.
 local function buttonArt(name, set, get)
@@ -406,6 +406,12 @@ end
 buttonArt("UI-HUD-ActionBar-IconFrame", toggle.SetNormalAtlas, toggle.GetNormalTexture)
 buttonArt("UI-HUD-ActionBar-IconFrame-Down", toggle.SetPushedAtlas, toggle.GetPushedTexture)
 buttonArt("UI-HUD-ActionBar-IconFrame-Mouseover", toggle.SetHighlightAtlas, toggle.GetHighlightTexture)
+-- At twice the size the solid mouseover square is too loud: a soft glow,
+-- as the game does for its spell highlight.
+if toggle:GetHighlightTexture() then
+	toggle:GetHighlightTexture():SetBlendMode("ADD")
+	toggle:GetHighlightTexture():SetAlpha(0.5)
+end
 
 -- Awake: a gold rim. Asleep: the icon greys out and dozes under the
 -- player frame's own floating Zzz.
@@ -436,9 +442,14 @@ end
 toggle.zzz = zzz
 
 -- The key, small, where the action buttons show theirs.
-toggle.key = toggle:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
-toggle.key:SetSize(37, 10)
-toggle.key:SetPoint("TOPRIGHT", -5, -5)
+-- On a half-scale layer, so the button's size doesn't blow the text up.
+local keyLayer = CreateFrame("Frame", nil, toggle)
+keyLayer:SetScale(0.5)
+keyLayer:SetAllPoints()
+keyLayer:SetFrameLevel(toggle:GetFrameLevel() + 5)
+toggle.key = keyLayer:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmallGray")
+toggle.key:SetSize(64, 10)
+toggle.key:SetPoint("TOPRIGHT", -9, -9)
 toggle.key:SetJustifyH("RIGHT")
 
 toggle:SetScript("OnClick", function(_, mouse)
