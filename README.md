@@ -19,7 +19,7 @@ Send it to sleep and your weapons come back, and the key does its usual thing ag
 - **Fishing key**: click, then press the key (or mouse button) to fish with. Right-click it to unbind.
 - **Automatic**: **Lure**, **Pole** and **Loot** turn each automatic step on or off.
 - **Open**: **Clams** and **Chests** open what you fished up, between casts. Locked chests are left alone.
-- **While fishing**: **No mobs** stops mobs and NPCs being soft-targeted, **No plates** hides nameplates, both only while awake: sleeping, a fight or a reload puts your settings back as they were.
+- **While fishing**: **No mobs** stops mobs and NPCs being soft-targeted, **No plates** hides nameplates, both only while awake; **Shoulder** zooms the camera in over your shoulder while the line is out. Sleeping, a fight or a reload puts your settings back as they were.
 - Drag the button to move it. `/tm` shows or hides it; `/tm wake`, `/tm sleep`, `/tm toggle`.
 
 Pole, lure and container lists come from the game's own data, so it works in every client language.

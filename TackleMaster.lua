@@ -36,7 +36,7 @@ local HOLDS = {
 
 local DEFAULTS = {
 	autoLure = true, autoPole = true, autoLoot = true, openClams = true, openChests = true,
-	ignoreMobs = true, hidePlates = true,
+	ignoreMobs = true, hidePlates = true, shoulderCam = true,
 }
 
 local db, char
@@ -186,8 +186,62 @@ local function hold(group, on)
 	end
 end
 
+-- Shoulder camera ---------------------------------------------------------
+
+-- While the line is out the camera zooms in and pans over the shoulder, as
+-- DialogueUI does for talks. It lets go a moment after the line comes in,
+-- so casting again straight away keeps the view.
+local CAM_ZOOM, CAM_LINGER = 4, 2.5
+local cam = CreateFrame("Frame")
+local camZoom, camOutAt, camTick = nil, nil, 0
+
+-- DialogueUI's fit: the offset that puts the character aside at a zoom.
+local function shoulderFor(zoom)
+	return zoom * 0.4314 + 0.1057
+end
+
+local function camRelease()
+	local held = db.held.cam
+	if not held then return end
+	C_CVar.SetCVar("test_cameraOverShoulder", held.shoulder)
+	db.held.cam = nil
+	cam:Hide()
+	-- After a reload there is no zoom to go back to.
+	if camZoom and camZoom > GetCameraZoom() + 0.1 then
+		CameraZoomOut(camZoom - GetCameraZoom())
+	end
+	camZoom, camOutAt = nil, nil
+end
+
+local function camIn()
+	camOutAt = nil
+	if db.held.cam then return end
+	db.held.cam = { shoulder = C_CVar.GetCVar("test_cameraOverShoulder") or "0" }
+	camZoom = GetCameraZoom()
+	if camZoom > CAM_ZOOM + 0.1 then CameraZoomIn(camZoom - CAM_ZOOM) end
+	cam:Show()
+end
+
+local function camOut()
+	if db.held.cam and not camOutAt then camOutAt = GetTime() + CAM_LINGER end
+end
+
+-- The offset follows the zoom as it glides in, so the pan is smooth.
+cam:Hide()
+cam:SetScript("OnUpdate", function(_, dt)
+	if camOutAt and GetTime() >= camOutAt then
+		if not InCombatLockdown() then camRelease() end
+		return
+	end
+	camTick = camTick + dt
+	if camTick < 0.03 then return end
+	camTick = 0
+	C_CVar.SetCVar("test_cameraOverShoulder", shoulderFor(GetCameraZoom()))
+end)
+
 local function releaseAll()
 	for group in pairs(HOLDS) do hold(group, false) end
+	camRelease()
 end
 
 -- Weapons -----------------------------------------------------------------
@@ -264,6 +318,7 @@ local function update()
 	hold("soft", step == "reel")
 	hold("mobs", char.awake and db.ignoreMobs)
 	hold("plates", char.awake and db.hidePlates)
+	if step == "reel" and db.shoulderCam then camIn() else camOut() end
 	if not db.key then
 		if current then clear() end
 	elseif (step ~= current or item ~= currentItem) and not keyHeld() then
@@ -675,6 +730,7 @@ header("While fishing")
 row({
 	{ "No mobs", "ignoreMobs", "While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep." },
 	{ "No plates", "hidePlates", "While awake, nameplates are hidden. Back as it was when you sleep, and during fights." },
+	{ "Shoulder", "shoulderCam", "While the line is out, the camera zooms in over your shoulder. Back as it was after the catch." },
 })
 options:SetHeight(-y)
 
