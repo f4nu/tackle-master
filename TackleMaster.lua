@@ -460,13 +460,15 @@ local function buttonArt(name, set, get)
 end
 buttonArt("UI-HUD-ActionBar-IconFrame", toggle.SetNormalAtlas, toggle.GetNormalTexture)
 buttonArt("UI-HUD-ActionBar-IconFrame-Down", toggle.SetPushedAtlas, toggle.GetPushedTexture)
-buttonArt("UI-HUD-ActionBar-IconFrame-Mouseover", toggle.SetHighlightAtlas, toggle.GetHighlightTexture)
--- At twice the size the solid mouseover square is too loud: a soft glow,
--- as the game does for its spell highlight.
-if toggle:GetHighlightTexture() then
-	toggle:GetHighlightTexture():SetBlendMode("ADD")
-	toggle:GetHighlightTexture():SetAlpha(0.5)
-end
+-- Hovering brightens the icon itself, under the same mask: the game's
+-- square mouseover glow sits a pixel off the bevelled frame, and at twice
+-- the size it shows.
+toggle:SetHighlightTexture(C_Spell.GetSpellTexture(7620), "ADD")
+toggle.glow = toggle:GetHighlightTexture()
+toggle.glow:ClearAllPoints()
+toggle.glow:SetAllPoints(toggle.icon)
+toggle.glow:SetAlpha(0.35)
+if toggle.icon:GetNumMaskTextures() > 0 then toggle.glow:AddMaskTexture(mask) end
 
 -- Awake: a gold rim. Asleep: the icon greys out and dozes under the
 -- player frame's own floating Zzz.
@@ -780,6 +782,7 @@ function refresh()
 	if not char then return end
 	local awake = char.awake
 	toggle.icon:SetDesaturated(not awake)
+	toggle.glow:SetDesaturated(not awake)
 	toggle.icon:SetAlpha(awake and 1 or 0.5)
 	toggle.rim:SetShown(awake)
 	toggle.zzz:SetShown(not awake)
