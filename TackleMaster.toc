@@ -3,6 +3,7 @@
 ## Notes: One key to fish: equips your best pole, puts on a lure, casts and reels in. Asleep, the key is yours again.
 ## IconTexture: Interface\AddOns\TackleMaster\Media\icon
 ## Author: Fanu
+## X-Curse-Project-ID: 1789682
 ## Version: @project-version@
 ## SavedVariables: TackleMasterDB
 ## SavedVariablesPerCharacter: TackleMasterCharDB

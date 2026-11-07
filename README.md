@@ -1,6 +1,8 @@
+<img src="art/icon-400.png" width="96" align="right">
+
 # TackleMaster
 
-One key to fish, for WoW Forever.
+**One key to fish, for WoW Forever.**
 
 Wake it up and your fishing key does the next step every press:
 
