@@ -4,6 +4,7 @@ ignore:
   - curseforge
   - tools
   - art
+  - screenshots
   - README.md
   - CLAUDE.md
 

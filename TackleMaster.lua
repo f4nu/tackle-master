@@ -435,8 +435,8 @@ end
 -- UI ----------------------------------------------------------------------
 --
 -- The game's own looks, from its atlases: an action button to wake and
--- sleep, and a metal-framed options window. Only art and templates are
--- borrowed; no Blizzard function runs from here.
+-- sleep, and an options window in the game's seafaring dress. Only art
+-- and templates are borrowed; no Blizzard function runs from here.
 
 -- An atlas this client lacks must not raise an error.
 local function setAtlas(texture, name, useSize)
@@ -562,42 +562,73 @@ tooltip(toggle, "ANCHOR_TOP", function()
 end)
 
 -- Options window ----------------------------------------------------------
+--
+-- A fisherman's card. The dress is the game's own nautical frame kit, the
+-- one its player-choice window wears at sea: weathered planks lashed with
+-- rope, barnacles, a starfish, a crab in the corner; inside, a sea-stained
+-- parchment with the title on a scroll across the top plank. The options
+-- are written on the parchment in the kit's ink.
 
-local LEFT, RIGHT, WIDTH = 16, 14, 236
+local WIDTH = 260
+local LEFT, RIGHT = 30, 30
 local INNER = WIDTH - LEFT - RIGHT
+local PLANK = 17
+local INK = { 0.192, 0.051, 0.008 }
+local INK_SOFT = { 0.36, 0.21, 0.07 }
+local PALE_SOFT = { 0.86, 0.82, 0.72 }
 
 local options = CreateFrame("Frame", "TackleMasterOptions", UIParent)
 options:SetWidth(WIDTH)
 options:SetFrameStrata("DIALOG")
 options:SetClampedToScreen(true)
-options:SetClampRectInsets(-8, 2, 16, -8)
+options:SetClampRectInsets(0, 3, 3, 0)
 options:EnableMouse(true)
 options:Hide()
+-- Dragged anywhere on the window; once moved it stays where it was put.
+options:SetMovable(true)
+options:SetDontSavePosition(true)
+options:RegisterForDrag("LeftButton")
+local function dragStart()
+	options:StartMoving()
+end
+local function dragStop()
+	options:StopMovingOrSizing()
+	local point, _, relPoint, x, y = options:GetPoint()
+	db.optionsPoint = { point, relPoint, x, y }
+	local cx = options:GetCenter()
+	options.side = cx and cx > UIParent:GetWidth() / 2 and "left" or "right"
+end
+options:SetScript("OnDragStart", dragStart)
+options:SetScript("OnDragStop", dragStop)
 
--- The game's window dress (DefaultPanelTemplate, offsets as on Forever)
--- from the same atlases: metal border over a rock background, the title
--- in the band on top. Returns the frame above the border, for the close
--- button.
+-- The controls cover most of the card: a drag on them moves the window.
+local function draggable(frame)
+	frame:RegisterForDrag("LeftButton")
+	frame:SetScript("OnDragStart", dragStart)
+	frame:SetScript("OnDragStop", dragStop)
+end
+
+-- The parchment, the planks over its edges, the ribbon over the top
+-- plank. Returns the frame above the planks, for the close button.
 local function dress(frame, title)
-	local bg = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
-	bg:SetTexture("Interface/FrameGeneral/UI-Background-Rock", "REPEAT", "REPEAT")
-	bg:SetHorizTile(true)
-	bg:SetVertTile(true)
-	bg:SetPoint("TOPLEFT", 6, -21)
-	bg:SetPoint("BOTTOMRIGHT", -2, 2)
-	local streaks = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
-	streaks:SetHorizTile(true)
-	setAtlas(streaks, "_UI-Frame-TopTileStreaks", true)
-	streaks:SetPoint("TOPLEFT", 6, -21)
-	streaks:SetPoint("TOPRIGHT", -2, -21)
+	local card = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+	card:SetPoint("TOPLEFT", 6, -6)
+	card:SetPoint("BOTTOMRIGHT", -6, 6)
+	if not setAtlas(card, "UI-Frame-Marine-CardParchment") then
+		card:SetColorTexture(0.78, 0.7, 0.52)
+	end
 
+	-- The kit's slices are cut for a window three times this size: on a
+	-- half-scale layer the planks come out 17 pixels wide.
 	local border = CreateFrame("Frame", nil, frame)
-	border:SetAllPoints()
+	border:SetScale(0.55)
+	border:SetPoint("TOPLEFT")
+	border:SetPoint("BOTTOMRIGHT")
 	border:SetFrameLevel(frame:GetFrameLevel() + 5)
-	local function corner(name, point, x, y)
+	local function corner(name, point)
 		local tex = border:CreateTexture(nil, "OVERLAY")
 		setAtlas(tex, name, true)
-		tex:SetPoint(point, x, y)
+		tex:SetPoint(point)
 		return tex
 	end
 	local function edge(name, vertical, point, from, fromPoint, point2, to, toPoint)
@@ -607,27 +638,40 @@ local function dress(frame, title)
 		tex:SetPoint(point, from, fromPoint)
 		tex:SetPoint(point2, to, toPoint)
 	end
-	local tl = corner("UI-Frame-Metal-CornerTopLeft", "TOPLEFT", -8, 16)
-	local tr = corner("UI-Frame-Metal-CornerTopRight", "TOPRIGHT", 2, 16)
-	local bl = corner("UI-Frame-Metal-CornerBottomLeft", "BOTTOMLEFT", -8, -8)
-	local br = corner("UI-Frame-Metal-CornerBottomRight", "BOTTOMRIGHT", 2, -8)
-	edge("_UI-Frame-Metal-EdgeTop", false, "TOPLEFT", tl, "TOPRIGHT", "TOPRIGHT", tr, "TOPLEFT")
-	edge("_UI-Frame-Metal-EdgeBottom", false, "BOTTOMLEFT", bl, "BOTTOMRIGHT", "BOTTOMRIGHT", br, "BOTTOMLEFT")
-	edge("!UI-Frame-Metal-EdgeLeft", true, "TOPLEFT", tl, "BOTTOMLEFT", "BOTTOMLEFT", bl, "TOPLEFT")
-	edge("!UI-Frame-Metal-EdgeRight", true, "TOPRIGHT", tr, "BOTTOMRIGHT", "BOTTOMRIGHT", br, "TOPRIGHT")
+	local tl = corner("Marine-NineSlice-CornerTopLeft", "TOPLEFT")
+	local tr = corner("Marine-NineSlice-CornerTopRight", "TOPRIGHT")
+	local bl = corner("Marine-NineSlice-CornerBottomLeft", "BOTTOMLEFT")
+	local br = corner("Marine-NineSlice-CornerBottomRight", "BOTTOMRIGHT")
+	edge("_Marine-NineSlice-EdgeTop", false, "TOPLEFT", tl, "TOPRIGHT", "TOPRIGHT", tr, "TOPLEFT")
+	edge("_Marine-NineSlice-EdgeBottom", false, "BOTTOMLEFT", bl, "BOTTOMRIGHT", "BOTTOMRIGHT", br, "BOTTOMLEFT")
+	edge("!Marine-NineSlice-EdgeLeft", true, "TOPLEFT", tl, "BOTTOMLEFT", "BOTTOMLEFT", bl, "TOPLEFT")
+	edge("!Marine-NineSlice-EdgeRight", true, "TOPRIGHT", tr, "BOTTOMRIGHT", "BOTTOMRIGHT", br, "TOPRIGHT")
 
 	local band = CreateFrame("Frame", nil, frame)
 	band:SetAllPoints()
 	band:SetFrameLevel(border:GetFrameLevel() + 1)
-	local text = band:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	text:SetPoint("TOP", 3, -6)
+	local ribbon = band:CreateTexture(nil, "ARTWORK")
+	ribbon:SetSize(169, 50)
+	ribbon:SetPoint("TOP", 0, 1)
+	setAtlas(ribbon, "UI-Frame-Marine-Ribbon")
+	local text = band:CreateFontString(nil, "OVERLAY", "GameFontBlackMedium")
+	text:SetPoint("CENTER", ribbon, "CENTER", 13, 1)
+	text:SetTextColor(unpack(INK))
 	text:SetText(title)
+	local icon = band:CreateTexture(nil, "OVERLAY")
+	icon:SetSize(22, 22)
+	icon:SetPoint("RIGHT", text, "LEFT", -4, 0)
+	icon:SetTexture("Interface/AddOns/TackleMaster/Media/icon")
 	return band
 end
 
-local close = CreateFrame("Button", nil, dress(options, "TackleMaster"), "UIPanelCloseButton")
-close:SetSize(28, 28)
-close:SetPoint("TOPRIGHT", 0, 3)
+local band = dress(options, "TackleMaster")
+local closeRing = band:CreateTexture(nil, "ARTWORK")
+setAtlas(closeRing, "UI-Frame-Marine-ExitButtonBorder", true)
+closeRing:SetPoint("TOPRIGHT", 3, 3)
+local close = CreateFrame("Button", "TackleMasterOptionsClose", band, "UIPanelCloseButton")
+close:SetSize(24, 24)
+close:SetPoint("CENTER", closeRing)
 close:SetScript("OnClick", function() options:Hide() end)
 
 -- Tooltips sit beside the window, on the side away from the button.
@@ -642,30 +686,90 @@ local function optionTip(frame, build)
 	end)
 end
 
-local y = -30
+local y = -50
 
+-- A section's name, on the kit's green band.
 local function header(title)
-	local text = options:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-	text:SetPoint("TOPLEFT", LEFT, y)
-	text:SetText(title)
-	local line = options:CreateTexture(nil, "ARTWORK")
-	if not setAtlas(line, "Options_HorizontalDivider", true) then
-		line:SetColorTexture(1, 0.82, 0, 0.3)
-		line:SetHeight(1)
+	local strip = options:CreateTexture(nil, "ARTWORK")
+	strip:SetSize(INNER + 10, 20)
+	strip:SetPoint("TOPLEFT", LEFT - 5, y)
+	if not setAtlas(strip, "UI-Frame-Marine-Subtitle") then
+		strip:SetColorTexture(0.1, 0.35, 0.25, 0.7)
 	end
-	line:SetPoint("TOPLEFT", LEFT, y - 16)
-	line:SetPoint("TOPRIGHT", -RIGHT, y - 16)
-	y = y - 22
+	local text = options:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	text:SetPoint("CENTER", strip)
+	text:SetText(title)
+	y = y - 23
 end
 
 header("Fishing key")
 
--- The key: click, then press a key or mouse button. Escape cancels,
--- right-click unbinds.
-local keyButton = CreateFrame("Button", nil, options, "UIPanelButtonTemplate")
-keyButton:SetSize(INNER, 22)
-keyButton:SetPoint("TOPLEFT", LEFT, y)
+-- The key, on a rope-framed plate next to the fishing icon, the way the
+-- action button shows it. Click, then press a key or mouse button.
+-- Escape cancels, right-click unbinds.
+local PLATE_W, PLATE_H = 160, 54
+local keyButton = CreateFrame("Button", nil, options)
+keyButton:SetSize(PLATE_W, PLATE_H)
+keyButton:SetPoint("TOP", 0, y)
 keyButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+draggable(keyButton)
+y = y - PLATE_H
+
+-- Dark water inside the plate, trimmed round at the corners like the
+-- plate itself.
+local fill = keyButton:CreateTexture(nil, "BACKGROUND")
+fill:SetPoint("TOPLEFT", 4, -4)
+fill:SetPoint("BOTTOMRIGHT", -4, 4)
+if not setAtlas(fill, "UI-Frame-Marine-BackgroundTile") then
+	fill:SetColorTexture(0.04, 0.08, 0.08)
+end
+local fillMask = keyButton:CreateMaskTexture()
+fillMask:SetAllPoints(fill)
+local trimmed = setAtlas(fillMask, "UI-Frame-IconMask")
+local function trim(tex)
+	if trimmed then tex:AddMaskTexture(fillMask) end
+end
+trim(fill)
+-- Lit while listening for the key.
+local glow = keyButton:CreateTexture(nil, "BORDER")
+glow:SetAllPoints(fill)
+glow:SetColorTexture(1, 0.82, 0, 0.25)
+glow:Hide()
+trim(glow)
+local pulse = keyButton:CreateAnimationGroup()
+pulse:SetLooping("BOUNCE")
+local fade = pulse:CreateAnimation("Alpha")
+fade:SetTarget(glow)
+fade:SetFromAlpha(0.4)
+fade:SetToAlpha(1)
+fade:SetDuration(0.7)
+-- Brighter under the mouse.
+local hover = keyButton:CreateTexture(nil, "BORDER", nil, 1)
+hover:SetAllPoints(fill)
+hover:SetColorTexture(1, 0.9, 0.6, 0.12)
+hover:Hide()
+trim(hover)
+local plate = keyButton:CreateTexture(nil, "ARTWORK")
+plate:SetAllPoints()
+setAtlas(plate, "UI-Frame-Marine-Portrait")
+keyButton.icon = keyButton:CreateTexture(nil, "ARTWORK", nil, 1)
+keyButton.icon:SetSize(30, 30)
+keyButton.icon:SetPoint("LEFT", 11, 0)
+keyButton.icon:SetTexture(C_Spell.GetSpellTexture(7620))
+local iconMask = keyButton:CreateMaskTexture()
+iconMask:SetAllPoints(keyButton.icon)
+if setAtlas(iconMask, "UI-HUD-ActionBar-IconFrame-Mask") then keyButton.icon:AddMaskTexture(iconMask) end
+keyButton.text = keyButton:CreateFontString(nil, "OVERLAY", "GameFontHighlightMedium")
+keyButton.text:SetPoint("LEFT", keyButton.icon, "RIGHT", 8, 0)
+keyButton.text:SetWidth(PLATE_W - 11 - 30 - 8 - 8)
+keyButton.text:SetJustifyH("LEFT")
+keyButton.text:SetWordWrap(true)
+keyButton.text:SetMaxLines(2)
+-- How to, under the plate.
+keyButton.hint = options:CreateFontString(nil, "OVERLAY", "GameFontBlackSmall")
+keyButton.hint:SetPoint("TOP", keyButton, "BOTTOM", 0, -3)
+keyButton.hint:SetJustifyH("CENTER")
+keyButton.hint:SetTextColor(unpack(INK_SOFT))
 y = y - 34
 
 local function stopListening()
@@ -694,7 +798,10 @@ keyButton:SetScript("OnKeyDown", function(self, key)
 	if not self.listening or MODIFIERS[key] then return end
 	if key == "ESCAPE" then stopListening() else setKey(withModifiers(key)) end
 end)
-keyButton:HookScript("OnMouseDown", function(self, mouse)
+-- Setting OnKeyDown turns the keyboard on, which would take every key
+-- while the window is open: only on while listening.
+keyButton:EnableKeyboard(false)
+keyButton:SetScript("OnMouseDown", function(self, mouse)
 	if self.listening and MOUSE[mouse] then setKey(withModifiers(MOUSE[mouse])) end
 end)
 keyButton:SetScript("OnClick", function(self, mouse)
@@ -715,98 +822,129 @@ optionTip(keyButton, function()
 	GameTooltip:AddLine("Right-click to unbind.", 0.8, 0.8, 0.8)
 	GameTooltip:AddLine("Only taken over while awake.", 0.8, 0.8, 0.8)
 end)
+keyButton:HookScript("OnEnter", function() hover:Show() end)
+keyButton:HookScript("OnLeave", function() hover:Hide() end)
 
 local boxes = {}
 
--- A row of options, spread over the width.
-local function row(items)
-	local x, step = LEFT, math.floor(INNER / #items)
-	for _, item in ipairs(items) do
-		local label, field, tip = unpack(item)
-		local box = CreateFrame("CheckButton", nil, options, "UICheckButtonTemplate")
-		box:SetSize(24, 24)
-		box:SetPoint("TOPLEFT", x, y)
-		box.Text:SetFontObject("GameFontHighlightSmall")
-		box.Text:ClearAllPoints()
-		box.Text:SetPoint("LEFT", box, "RIGHT", 1, 0)
-		box.Text:SetText(label)
-		box:SetHitRectInsets(0, -box.Text:GetStringWidth() - 4, 0, 0)
-		box.field = field
-		box:SetScript("OnClick", function(self)
-			local on = self:GetChecked()
-			PlaySound(on and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
-			db[field] = on
-			update()
-		end)
-		optionTip(box, function()
-			GameTooltip:AddLine(label)
-			GameTooltip:AddLine(tip, 1, 1, 1, true)
-		end)
-		boxes[#boxes + 1] = box
-		x = x + step
+-- An option on a row of its own: the box, its name, a few words on what
+-- it does. The whole row takes the click. The parchment darkens towards
+-- the bottom: the last rows are written in white.
+local function row(label, field, tip, note, pale)
+	local box = CreateFrame("CheckButton", nil, options)
+	box:SetSize(INNER + 6, 22)
+	box:SetPoint("TOPLEFT", LEFT - 3, y)
+	box:SetNormalTexture("Interface/Buttons/UI-CheckBox-Up")
+	box:SetPushedTexture("Interface/Buttons/UI-CheckBox-Down")
+	box:SetCheckedTexture("Interface/Buttons/UI-CheckBox-Check")
+	box:SetDisabledCheckedTexture("Interface/Buttons/UI-CheckBox-Check-Disabled")
+	for _, tex in ipairs({ box:GetNormalTexture(), box:GetPushedTexture(), box:GetCheckedTexture(), box:GetDisabledCheckedTexture() }) do
+		tex:ClearAllPoints()
+		tex:SetPoint("LEFT", 3, 0)
+		tex:SetSize(22, 22)
 	end
-	y = y - 36
+	-- An ink wash under the mouse.
+	local wash = box:CreateTexture(nil, "BACKGROUND")
+	wash:SetAllPoints()
+	wash:SetColorTexture(0.24, 0.14, 0.04, 0.12)
+	wash:Hide()
+	local text = box:CreateFontString(nil, "OVERLAY", pale and "GameFontHighlight" or "GameFontBlack")
+	text:SetPoint("LEFT", 29, 0)
+	if not pale then text:SetTextColor(unpack(INK)) end
+	text:SetText(label)
+	local words = box:CreateFontString(nil, "OVERLAY", pale and "GameFontHighlightSmall" or "GameFontBlackSmall")
+	words:SetPoint("LEFT", text, "RIGHT", 7, -1)
+	words:SetTextColor(unpack(pale and PALE_SOFT or INK_SOFT))
+	words:SetText(note)
+	box.field = field
+	box:SetScript("OnClick", function(self)
+		local on = self:GetChecked()
+		PlaySound(on and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
+		db[field] = on
+		update()
+	end)
+	optionTip(box, function()
+		GameTooltip:AddLine(label)
+		GameTooltip:AddLine(tip, 1, 1, 1, true)
+	end)
+	box:HookScript("OnEnter", function() wash:Show() end)
+	box:HookScript("OnLeave", function() wash:Hide() end)
+	draggable(box)
+	boxes[#boxes + 1] = box
+	y = y - 22
 end
 
 header("Automatic")
-row({
-	{ "Lure", "autoLure", "Puts your best lure on the pole when it has none." },
-	{ "Pole", "autoPole", "Equips your best pole. Your weapons come back when you sleep." },
-	{ "Loot", "autoLoot", "Takes everything you fish up, and what's in the clams and chests it opens." },
-})
+row("Lure", "autoLure", "Puts your best lure on the pole when it has none.", "best lure on the pole")
+row("Pole", "autoPole", "Equips your best pole. Your weapons come back when you sleep.", "best pole in the bags")
+row("Loot", "autoLoot", "Takes everything you fish up, and what's in the clams and chests it opens.", "takes what you fish up")
+y = y - 6
 header("Open")
-row({
-	{ "Clams", "openClams", "Opens fished-up clams between casts." },
-	{ "Chests", "openChests", "Opens fished-up crates, chests, trunks and bottles between casts. Locked ones are left alone." },
-})
+row("Clams", "openClams", "Opens fished-up clams between casts.", "opened between casts")
+row("Chests", "openChests", "Opens fished-up crates, chests, trunks and bottles between casts. Locked ones are left alone.", "crates, trunks and bottles")
+y = y - 6
 header("While fishing")
-row({
-	{ "No mobs", "ignoreMobs", "While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep." },
-	{ "No plates", "hidePlates", "While awake, nameplates are hidden. Back as it was when you sleep, and during fights." },
-	{ "Shoulder", "shoulderCam", "While the line is out, the camera zooms in over your shoulder. Back as it was after the catch, or as soon as you zoom yourself." },
-})
-options:SetHeight(-y)
+row("No mobs", "ignoreMobs", "While awake, mobs and NPCs aren't soft-targeted. Back as it was when you sleep.", "never soft-targeted", true)
+row("No plates", "hidePlates", "While awake, nameplates are hidden. Back as it was when you sleep, and during fights.", "nameplates hidden", true)
+row("Shoulder", "shoulderCam", "While the line is out, the camera zooms in over your shoulder. Back as it was after the catch, or as soon as you zoom yourself.", "camera closes in", true)
+options:SetHeight(-y + 10 + PLANK)
 
--- Escape closes the window. Every other key goes on to the game: the
--- propagation flag is set from the handler, and left alone in combat,
--- when it is protected.
-options:SetScript("OnKeyDown", function(self, key)
+-- Escape closes the window through a binding held while it is open. The
+-- window takes no keyboard: keys passed on from an add-on's handler reach
+-- the game tainted, and the fishing key's secure click is then blocked.
+-- Bindings can't change in combat, so Escape is the game's there.
+local function escapeBinding()
 	if InCombatLockdown() then return end
-	if key == "ESCAPE" then
-		self:SetPropagateKeyboardInput(false)
-		self:Hide()
-	else
-		self:SetPropagateKeyboardInput(true)
+	ClearOverrideBindings(options)
+	if options:IsShown() then
+		SetOverrideBindingClick(options, true, "ESCAPE", close:GetName())
 	end
-end)
+end
+
 options:SetScript("OnShow", function(self)
-	if not InCombatLockdown() then
-		self:EnableKeyboard(true)
-		self:SetPropagateKeyboardInput(true)
-	end
+	escapeBinding()
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
 	refresh()
 end)
 options:SetScript("OnHide", function(self)
-	self:EnableKeyboard(false)
+	escapeBinding()
 	PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
 end)
 
--- Opens beside the button, towards the middle of the screen.
+-- Opens where it was last dragged, or beside the button, towards the
+-- middle of the screen.
 function toggleOptions()
 	if options:IsShown() then
 		options:Hide()
 		return
 	end
+	options:ClearAllPoints()
+	local saved = db.optionsPoint
+	if saved then
+		options:SetPoint(saved[1], UIParent, saved[2], saved[3], saved[4])
+		options:Show()
+		local x = options:GetCenter()
+		options.side = x and x > UIParent:GetWidth() / 2 and "left" or "right"
+		return
+	end
 	local x = toggle:GetCenter()
 	options.side = x and x > UIParent:GetWidth() / 2 and "left" or "right"
-	options:ClearAllPoints()
 	if options.side == "left" then
-		options:SetPoint("RIGHT", toggle, "LEFT", -10, 0)
+		options:SetPoint("RIGHT", toggle, "LEFT", -12, 0)
 	else
-		options:SetPoint("LEFT", toggle, "RIGHT", 16, 0)
+		options:SetPoint("LEFT", toggle, "RIGHT", 12, 0)
 	end
 	options:Show()
+end
+
+-- The plate's type steps down for a long key, two lines at most.
+local function fitKey(shown)
+	local text = keyButton.text
+	if text.shown == shown then return end
+	text.shown = shown
+	text:SetFontObject("GameFontHighlightMedium")
+	if text:IsTruncated() then text:SetFontObject("GameFontHighlight") end
+	if text:IsTruncated() then text:SetFontObject("GameFontHighlightSmall") end
 end
 
 function refresh()
@@ -833,10 +971,28 @@ function refresh()
 	local shade = awake and 1 or 0.6
 	toggle.key:SetText(db.key and GetBindingText(db.key, 1) or "")
 	toggle.key:SetTextColor(shade, shade, shade)
+	local text, hint = keyButton.text
 	if keyButton.listening then
-		keyButton:SetText("Press a key...")
+		text:SetText("Press a key...")
+		text:SetTextColor(1, 0.82, 0)
+		hint = "Any key or mouse button.\nEscape cancels."
+	elseif db.key then
+		text:SetText(GetBindingText(db.key))
+		text:SetTextColor(1, 1, 1)
+		hint = "Click, then press a key or mouse button.\nRight-click to unbind."
 	else
-		keyButton:SetText(db.key and GetBindingText(db.key) or "Set a key")
+		text:SetText("Set a key")
+		text:SetTextColor(0.6, 0.6, 0.6)
+		hint = "Click, then press a key or mouse button."
+	end
+	fitKey(text:GetText())
+	keyButton.hint:SetText(hint)
+	if keyButton.listening then
+		glow:Show()
+		if not pulse:IsPlaying() then pulse:Play() end
+	else
+		glow:Hide()
+		if pulse:IsPlaying() then pulse:Stop() end
 	end
 	for _, box in ipairs(boxes) do
 		box:SetChecked(db[box.field])
@@ -881,6 +1037,7 @@ events:SetScript("OnEvent", function(_, event)
 		-- to normal for the fight.
 		releaseAll()
 		clear()
+		ClearOverrideBindings(options)
 	elseif event == "LOOT_READY" then
 		loot()
 	elseif event == "PLAYER_REGEN_ENABLED" then
@@ -888,6 +1045,7 @@ events:SetScript("OnEvent", function(_, event)
 			pendingSleep = nil
 			setAwake(false)
 		end
+		escapeBinding()
 		update()
 	elseif char and char.awake then
 		update()

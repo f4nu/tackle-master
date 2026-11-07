@@ -14,12 +14,20 @@ Send it to sleep and your weapons come back, and the key does its usual thing ag
 
 ## Use
 
+<img src="screenshots/options.png" alt="The options" width="271" align="right">
+
 - Left-click the fishing button to wake or sleep. Awake, it is lit and shows the key; asleep, it greys out and dozes.
-- Right-click it, or `/tm options`, for the options. Escape closes them.
+- Right-click it, or `/tm options`, for the options. Drag them anywhere; Escape closes them.
 - **Fishing key**: click, then press the key (or mouse button) to fish with. Right-click it to unbind.
 - **Automatic**: **Lure**, **Pole** and **Loot** turn each automatic step on or off.
 - **Open**: **Clams** and **Chests** open what you fished up, between casts. Locked chests are left alone.
 - **While fishing**: **No mobs** stops mobs and NPCs being soft-targeted, **No plates** hides nameplates, both only while awake; **Shoulder** zooms the camera in over your shoulder while the line is out. Sleeping, a fight or a reload puts your settings back as they were.
 - Drag the button to move it. `/tm` shows or hides it; `/tm wake`, `/tm sleep`, `/tm toggle`.
+
+## Over the shoulder
+
+![Fishing over the shoulder](screenshots/shoulder.jpg)
+
+With **Shoulder** on, the camera comes in close behind you as the line goes out, the way DialogueUI frames a talk: your angler on one side, the water and the bobber filling the rest. Nothing else to watch, just the float. It eases back out a moment after the catch, so casting again keeps the view. Zoom yourself and it lets go at once.
 
 Pole, lure and container lists come from the game's own data, so it works in every client language.
